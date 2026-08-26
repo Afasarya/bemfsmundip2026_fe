@@ -1,0 +1,6 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/bemfsmco/public_html/
+    - /bin/cp -R * $DEPLOYPATH
+    - /bin/echo "Deployed, run npm install & build manually via Node App terminal"
