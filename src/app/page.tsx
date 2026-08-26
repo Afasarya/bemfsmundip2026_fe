@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import {
   MessageSquareHeart,
   Trophy,
@@ -41,6 +42,16 @@ const colSpanMap: Record<string, string> = {
 
 export default function Home() {
   const introComplete = useIntroComplete();
+  const reduceMotion = useReducedMotion();
+  const [canUseSpline, setCanUseSpline] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 768px) and (pointer: fine)");
+    const update = () => setCanUseSpline(query.matches && !reduceMotion);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, [reduceMotion]);
 
   return (
     <div className="relative bg-bara-bg-dark">
@@ -48,17 +59,30 @@ export default function Home() {
       <section className="relative h-screen flex flex-col justify-end isolate overflow-hidden">
         {/* Spline 3D Background */}
         <div className="absolute inset-0 -z-10">
-          <iframe
-            key={introComplete ? "spline-live" : "spline-preload"}
-            src="https://my.spline.design/web3agencysaasherosection-BgGpIXFBxyIZiJbWmQvIDimz/"
-            frameBorder="0"
-            width="100%"
-            height="100%"
-            loading="eager"
-            className={introComplete ? "animate-[splineReveal_0.45s_ease-out_both]" : "opacity-0"}
-            style={{ border: "none" }}
-            title="Hero 3D Scene"
-          />
+          {canUseSpline && introComplete ? (
+            <iframe
+              src="https://my.spline.design/web3agencysaasherosection-BgGpIXFBxyIZiJbWmQvIDimz/"
+              frameBorder="0"
+              width="100%"
+              height="100%"
+              loading="lazy"
+              className="animate-[splineReveal_0.45s_ease-out_both]"
+              style={{ border: "none" }}
+              title="Hero 3D Scene"
+            />
+          ) : (
+            <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_72%_30%,rgba(242,92,5,.22),transparent_35%),linear-gradient(145deg,#240d07_0%,#130705_55%,#090403_100%)]">
+              <Image
+                src="/images/barmon-ketua-wakil.png"
+                alt="Kabinet Bara Momentum"
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-[62%_center] opacity-55 md:object-center md:opacity-30"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-bara-bg-dark via-transparent to-bara-bg-dark/20" />
+            </div>
+          )}
           {/* Overlay to prevent iframe from capturing scroll/click */}
           <div className="absolute inset-0" />
         </div>
