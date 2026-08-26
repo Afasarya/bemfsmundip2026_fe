@@ -617,6 +617,8 @@ export default function ArchivedMemoriesGallery() {
       prevY = e.clientY;
 
       targetYaw   += dx * DRAG_SENSITIVITY;
+      // Vertical touch gestures remain reserved for normal page scrolling.
+      if (e.pointerType === "touch") return;
       // Clamp pitch to prevent over-rotation vertically
       targetPitch  = Math.max(
         -PITCH_CLAMP,
@@ -628,55 +630,17 @@ export default function ArchivedMemoriesGallery() {
       isDragging = false;
     }
 
-    // ── Touch event handlers (mobile = same drag behaviour as desktop) ────
-    // Pointer events already handle touch on most browsers, but we add explicit
-    // touch handlers as a fallback so mobile feels identical to desktop.
-    let touchId: number | null = null;
-
-    function onTouchStart(e: TouchEvent) {
-      if (e.touches.length === 1) {
-        touchId = e.touches[0].identifier;
-        isDragging = true;
-        prevX = e.touches[0].clientX;
-        prevY = e.touches[0].clientY;
-        e.preventDefault(); // block page scroll while dragging gallery
-      }
-    }
-
-    function onTouchMove(e: TouchEvent) {
-      if (!isDragging || touchId === null) return;
-      // Find our tracked touch
-      let touch: Touch | null = null;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === touchId) {
-          touch = e.changedTouches[i];
-          break;
-        }
-      }
-      if (!touch) return;
-      e.preventDefault();
-      const dx = touch.clientX - prevX;
-      const dy = touch.clientY - prevY;
-      prevX = touch.clientX;
-      prevY = touch.clientY;
-
-      targetYaw   += dx * DRAG_SENSITIVITY;
-      targetPitch  = Math.max(
-        -PITCH_CLAMP,
-        Math.min(PITCH_CLAMP, targetPitch + dy * DRAG_SENSITIVITY),
-      );
-    }
-
-    function onTouchEnd() {
-      isDragging = false;
-      touchId = null;
-    }
-
     // ── Wheel / scroll handler ────────────────────────────────────────────
     function onWheel(e: WheelEvent) {
-      e.preventDefault(); // prevent page scroll while inside canvas
-      targetCamZ -= e.deltaY * SCROLL_SPEED;
-      targetCamZ  = Math.max(CAM_Z_MIN, Math.min(CAM_Z_MAX, targetCamZ));
+      const nextCamZ = Math.max(CAM_Z_MIN, Math.min(CAM_Z_MAX, targetCamZ - e.deltaY * SCROLL_SPEED));
+      const movingDeeper = e.deltaY > 0 && targetCamZ > CAM_Z_MIN;
+      const movingOutward = e.deltaY < 0 && targetCamZ < CAM_Z_MAX;
+
+      // Consume wheel only while gallery camera can move. At either boundary,
+      // release wheel to document so visitors can reach adjacent sections.
+      if (!movingDeeper && !movingOutward) return;
+      e.preventDefault();
+      targetCamZ = nextCamZ;
 
       // Scroll progress: 0 at start, 1 at deepest point
       const progress = (CAM_Z_START - targetCamZ) / (CAM_Z_START - CAM_Z_MIN);
@@ -701,12 +665,6 @@ export default function ArchivedMemoriesGallery() {
     canvas.addEventListener("pointercancel", onPointerUp);
     canvas.addEventListener("wheel",         onWheel, { passive: false });
 
-    // Explicit touch fallback for mobile (passive: false allows e.preventDefault)
-    canvas.addEventListener("touchstart",  onTouchStart,  { passive: false });
-    canvas.addEventListener("touchmove",   onTouchMove,   { passive: false });
-    canvas.addEventListener("touchend",    onTouchEnd);
-    canvas.addEventListener("touchcancel", onTouchEnd);
-
     // ── Cleanup — runs when component unmounts ─────────────────────────
     return () => {
       cancelAnimationFrame(rafId);
@@ -717,11 +675,6 @@ export default function ArchivedMemoriesGallery() {
       canvas.removeEventListener("pointerup",     onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
       canvas.removeEventListener("wheel",         onWheel);
-      canvas.removeEventListener("touchstart",    onTouchStart);
-      canvas.removeEventListener("touchmove",     onTouchMove);
-      canvas.removeEventListener("touchend",      onTouchEnd);
-      canvas.removeEventListener("touchcancel",   onTouchEnd);
-
       // Dispose Three.js GPU resources
       renderer.dispose();
       // Three particle layer tiers
@@ -757,13 +710,8 @@ export default function ArchivedMemoriesGallery() {
         position: "relative",
         width: "100%",
         height: "100%",
-        minHeight: "100vh",
-        background: [
-          "radial-gradient(ellipse 70% 50% at 30% 20%, rgba(92,16,2,0.45) 0%, transparent 60%)",
-          "radial-gradient(ellipse 60% 40% at 70% 80%, rgba(178,36,8,0.30) 0%, transparent 55%)",
-          "radial-gradient(ellipse 50% 35% at 50% 50%, rgba(242,92,5,0.10) 0%, transparent 65%)",
-          "linear-gradient(175deg, #1F0E08 0%, #1A0A06 40%, #110604 100%)",
-        ].join(", "),
+        minHeight: "100%",
+        background: "#1A0A06",
         overflow: "hidden",
       }}
     >
@@ -777,7 +725,7 @@ export default function ArchivedMemoriesGallery() {
           position: "absolute",
           inset: 0,
           cursor: "grab",
-          touchAction: "none",
+          touchAction: "pan-y",
         }}
       />
 

@@ -43,7 +43,7 @@ export default function Home() {
   const introComplete = useIntroComplete();
 
   return (
-    <div className="relative">
+    <div className="relative bg-bara-bg-dark">
       {/* ===================== HERO ===================== */}
       <section className="relative h-screen flex flex-col justify-end isolate overflow-hidden">
         {/* Spline 3D Background */}
@@ -316,13 +316,14 @@ export default function Home() {
               <span className="italic gradient-text">terus menyala.</span>
             </h2>
             <p className="section-intro mt-5">
-              Seret foto untuk menjelajah. Gulir untuk mendekat ke kenangan.
+              <span className="md:hidden">Geser horizontal untuk menjelajah. Gulir vertikal untuk melanjutkan.</span>
+              <span className="hidden md:inline">Seret foto untuk menjelajah. Gulir untuk mendekat ke kenangan.</span>
             </p>
           </motion.div>
         </div>
 
         {/* Full-viewport 3-D gallery */}
-        <div className="w-full" style={{ height: "100svh" }}>
+        <div className="h-[78svh] min-h-[34rem] w-full md:h-screen">
           <ArchivedMemoriesGallery />
         </div>
       </section>
