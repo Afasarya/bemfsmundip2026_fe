@@ -46,11 +46,7 @@ export default function Home() {
   const [canUseSpline, setCanUseSpline] = useState(false);
 
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 768px) and (pointer: fine)");
-    const update = () => setCanUseSpline(query.matches && !reduceMotion);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
+    setCanUseSpline(!reduceMotion);
   }, [reduceMotion]);
 
   return (
@@ -59,7 +55,8 @@ export default function Home() {
       <section className="relative h-screen flex flex-col justify-end isolate overflow-hidden">
         {/* Spline 3D Background */}
         <div className="absolute inset-0 -z-10">
-          {canUseSpline && introComplete ? (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_30%,rgba(242,92,5,.18),transparent_35%),linear-gradient(145deg,#240d07_0%,#130705_55%,#090403_100%)]" />
+          {canUseSpline && introComplete && (
             <iframe
               src="https://my.spline.design/web3agencysaasherosection-BgGpIXFBxyIZiJbWmQvIDimz/"
               frameBorder="0"
@@ -70,18 +67,6 @@ export default function Home() {
               style={{ border: "none" }}
               title="Hero 3D Scene"
             />
-          ) : (
-            <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_72%_30%,rgba(242,92,5,.22),transparent_35%),linear-gradient(145deg,#240d07_0%,#130705_55%,#090403_100%)]">
-              <Image
-                src="/images/barmon-ketua-wakil.png"
-                alt="Kabinet Bara Momentum"
-                fill
-                priority
-                sizes="100vw"
-                className="object-cover object-[62%_center] opacity-55 md:object-center md:opacity-30"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-bara-bg-dark via-transparent to-bara-bg-dark/20" />
-            </div>
           )}
           {/* Overlay to prevent iframe from capturing scroll/click */}
           <div className="absolute inset-0" />

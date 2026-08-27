@@ -5,7 +5,7 @@ import Image from "next/image";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
 const DESKTOP_INTRO_DURATION = 2700;
-const MOBILE_INTRO_DURATION = 900;
+const MOBILE_INTRO_DURATION = 1600;
 
 const IntroContext = createContext(false);
 
@@ -101,7 +101,7 @@ export default function Loader({ children }: { children: ReactNode }) {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.72, rotate: -4 }}
                   animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                  transition={{ duration: isMobile ? 0.38 : 0.85, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: isMobile ? 0.55 : 0.85, ease: [0.16, 1, 0.3, 1] }}
                   className="relative h-28 w-28 sm:h-36 sm:w-36 md:h-44 md:w-44"
                 >
                   <Image
@@ -118,7 +118,7 @@ export default function Loader({ children }: { children: ReactNode }) {
                   className="mt-5 text-[0.6875rem] font-semibold uppercase tracking-[0.18em] text-bara-orange"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: isMobile ? 0.1 : 0.45, duration: isMobile ? 0.25 : 0.5 }}
+                  transition={{ delay: isMobile ? 0.18 : 0.45, duration: isMobile ? 0.32 : 0.5 }}
                 >
                   Kabinet 2026
                 </motion.p>
@@ -128,7 +128,7 @@ export default function Loader({ children }: { children: ReactNode }) {
                     className="font-display text-5xl font-medium leading-none tracking-tight sm:text-7xl md:text-8xl"
                     initial={{ y: "115%" }}
                     animate={{ y: 0 }}
-                    transition={{ delay: isMobile ? 0.12 : 0.52, duration: isMobile ? 0.38 : 0.8, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ delay: isMobile ? 0.24 : 0.52, duration: isMobile ? 0.55 : 0.8, ease: [0.16, 1, 0.3, 1] }}
                   >
                     Bara <span className="gradient-text italic">Momentum</span>
                   </motion.h1>
@@ -138,7 +138,7 @@ export default function Loader({ children }: { children: ReactNode }) {
                   className="mt-3 font-display text-lg italic text-white/55 sm:text-xl"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: isMobile ? 0.28 : 0.95, duration: isMobile ? 0.25 : 0.55 }}
+                  transition={{ delay: isMobile ? 0.58 : 0.95, duration: isMobile ? 0.35 : 0.55 }}
                 >
                   Bara Berdaya, Momentum Berkarya
                 </motion.p>
@@ -157,7 +157,7 @@ export default function Loader({ children }: { children: ReactNode }) {
                   className="h-full origin-left bg-gradient-to-r from-bara-gold via-bara-orange to-bara-red"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
-                  transition={{ duration: isMobile ? 0.7 : 2.25, ease: [0.65, 0, 0.35, 1] }}
+                  transition={{ duration: isMobile ? 1.35 : 2.25, ease: [0.65, 0, 0.35, 1] }}
                 />
               </div>
               <span className="font-display text-sm italic text-white/45">FSM UNDIP</span>
