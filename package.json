@@ -9,6 +9,10 @@
   },
   "dependencies": {
     "@studio-freight/react-lenis": "^0.0.47",
+    "@tiptap/extension-image": "^3.30.5",
+    "@tiptap/extension-link": "^3.30.5",
+    "@tiptap/react": "^3.30.5",
+    "@tiptap/starter-kit": "^3.30.5",
     "@types/three": "^0.185.1",
     "framer-motion": "^11.3.8",
     "gsap": "^3.15.0",
