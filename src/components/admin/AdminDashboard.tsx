@@ -11,8 +11,8 @@ import {
   Search, Settings, Sparkles, Users, X,
 } from "lucide-react";
 import {
+  useAdminArticles,
   useAdminDashboard,
-  usePublicArticles,
   usePublicUnits,
 } from "@/lib/hooks";
 import { apiFetch } from "@/lib/api";
@@ -26,6 +26,7 @@ import {
   type UnitListItem,
   UNIT_TYPE_LABELS,
 } from "@/lib/types";
+import ArticleEditor from "./ArticleEditor";
 
 type Module = "overview" | "instagram" | "units" | "news";
 type DrawerKind = "instagram" | "unit" | "news" | null;
@@ -164,11 +165,16 @@ export default function AdminDashboard() {
         <EditorDrawer
           kind={drawer}
           editing={editing}
-          onClose={() => setDrawer(null)}
-          onSave={() => {
+          onClose={() => {
             setDrawer(null);
+            setEditing(null);
+          }}
+          onSaved={() => {
+            setDrawer(null);
+            setEditing(null);
             notify(editing ? "Perubahan berhasil disimpan." : "Item baru berhasil ditambahkan.");
           }}
+          notify={notify}
         />
       )}
       {toast && (
@@ -610,9 +616,9 @@ function NewsModule({
 }: {
   search: string;
   setSearch: (v: string) => void;
-  onEdit: (v: string) => void;
+  onEdit: (id: string) => void;
 }) {
-  const { data, isLoading } = usePublicArticles({ pageSize: 50 });
+  const { data, isLoading } = useAdminArticles({ pageSize: 50 });
   const articles: Article[] = data?.data ?? [];
   const filtered = articles.filter((a) =>
     `${a.title}`.toLowerCase().includes(search.toLowerCase())
@@ -664,7 +670,7 @@ function NewsModule({
                   <td>{formatDateShort(article.publishedAt ?? article.createdAt)}</td>
                   <td>
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => onEdit(article.title)} className="admin-icon-button">
+                      <button onClick={() => onEdit(article.id)} className="admin-icon-button">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -699,11 +705,32 @@ function Toolbar({ search, setSearch, placeholder, filter = "Semua status" }: { 
   );
 }
 
-function EditorDrawer({ kind, editing, onClose, onSave }: { kind: Exclude<DrawerKind, null>; editing: string | null; onClose: () => void; onSave: () => void }) {
+function EditorDrawer({
+  kind,
+  editing,
+  onClose,
+  onSaved,
+  notify,
+}: {
+  kind: Exclude<DrawerKind, null>;
+  editing: string | null;
+  onClose: () => void;
+  onSaved: () => void;
+  notify: (msg: string) => void;
+}) {
+  if (kind === "news") {
+    return (
+      <ArticleEditor
+        articleId={editing}
+        onClose={onClose}
+        onSaved={() => onSaved()}
+        notify={notify}
+      />
+    );
+  }
   const labels = {
     instagram: ["Konten Instagram", "Hubungkan post dan pilih lokasi tampil."],
     unit: ["Profil Unit", "Kelola seluruh isi halaman detail unit."],
-    news: ["Informasi", "Susun berita untuk portal informasi."],
   } as const;
   return (
     <div className="fixed inset-0 z-[180] bg-black/65 backdrop-blur-sm" onMouseDown={onClose}>
@@ -723,18 +750,12 @@ function EditorDrawer({ kind, editing, onClose, onSave }: { kind: Exclude<Drawer
         </div>
         <div className="p-6 space-y-6">
           <ComingSoonNotice />
-          <Field label="Nama">
-            <input className="admin-input" defaultValue={editing ?? ""} placeholder="Nama lengkap" />
-          </Field>
-          <Field label="Deskripsi singkat">
-            <textarea className="admin-input min-h-24 resize-y" placeholder="Ringkasan singkat" />
-          </Field>
         </div>
         <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-white/[0.07] bg-[#12100e]/95 px-6 py-4 backdrop-blur-xl">
           <p className="hidden text-[10px] text-white/25 sm:block">Periksa kembali sebelum menyimpan.</p>
           <div className="ml-auto flex gap-2">
             <button onClick={onClose} className="admin-secondary-button">Batal</button>
-            <button onClick={onSave} className="admin-primary-button">
+            <button onClick={onSaved} className="admin-primary-button">
               <Check className="h-4 w-4" />Simpan
             </button>
           </div>
@@ -743,14 +764,6 @@ function EditorDrawer({ kind, editing, onClose, onSave }: { kind: Exclude<Drawer
     </div>
   );
 }
-
-const Field = ({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) => (
-  <label className="block">
-    <span className="mb-2 block text-[11px] font-semibold text-white/55">{label}</span>
-    {children}
-    {hint && <span className="mt-1.5 block text-[10px] text-white/25">{hint}</span>}
-  </label>
-);
 
 function ComingSoonNotice() {
   return (
