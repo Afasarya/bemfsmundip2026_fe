@@ -57,6 +57,54 @@ export type PaginatedArticles = {
   pageSize: number;
 };
 
+// Editor support types — mirror backend response shapes.
+
+export type ArticleCategory = {
+  id: ID;
+  name: string;
+  slug: string;
+  description: string | null;
+  sortOrder: number;
+  createdAt: string;
+};
+
+export type ArticleRevision = {
+  id: ID;
+  articleId: ID;
+  version: number;
+  createdAt: string;
+  createdBy: { id: ID; name: string; email: string } | null;
+  restoreSourceId: string | null;
+};
+
+export type MediaVariant = "cover" | "inline" | "avatar" | "gallery";
+
+export type Media = {
+  id: ID;
+  url: string;
+  alt: string | null;
+  mimeType: string;
+  width: number | null;
+  height: number | null;
+  sizeBytes: number;
+  variant: MediaVariant;
+  createdAt: string;
+};
+
+export type CreateArticleInput = {
+  title: string;
+  excerpt?: string;
+  content: string;
+  coverMediaId?: string;
+  categoryId?: string;
+  visibility?: ArticleVisibility;
+  coverAlt?: string;
+};
+
+export type UpdateArticleInput = Partial<CreateArticleInput> & {
+  scheduledAt?: string;
+};
+
 // Unit list item (matches UnitListItemDto exactly).
 export type UnitListItem = {
   id: ID;
