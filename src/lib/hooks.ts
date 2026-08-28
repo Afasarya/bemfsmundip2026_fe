@@ -4,11 +4,17 @@ import { apiFetch } from "./api";
 import type {
   AdminDashboard,
   Article,
+  ArticleCategory,
+  ArticleRevision,
+  CreateArticleInput,
   InstagramProfileData,
+  Media,
+  MediaVariant,
   PaginatedArticles,
   PublicDashboard,
   UnitDetail,
   UnitListItem,
+  UpdateArticleInput,
 } from "./types";
 
 type ListParams = {
@@ -54,6 +60,151 @@ export function useArticleBySlug(slug: string | null, config?: SWRConfiguration<
     ([, s]) => apiFetch<Article>(`public/articles/${s}`),
     { ...defaults, ...config },
   );
+}
+
+export function useAdminArticles(
+  params?: ListParams,
+  config?: SWRConfiguration<PaginatedArticles>,
+) {
+  return useSWR<PaginatedArticles>(
+    ["admin-articles", params ?? null] as const,
+    async ([, q]) =>
+      apiFetch<PaginatedArticles>("admin/articles", {
+        query: q as Record<string, string | number | undefined>,
+        withCredentials: true,
+      }),
+    { ...defaults, ...config },
+  );
+}
+
+export function useAdminArticle(id: string | null, config?: SWRConfiguration<Article>) {
+  return useSWR<Article | null>(
+    id ? ["admin-article", id] as const : null,
+    async ([, aid]) =>
+      apiFetch<Article>(`admin/articles/${aid}`, { withCredentials: true }),
+    { ...defaults, ...config },
+  );
+}
+
+export function useAdminArticleRevisions(id: string | null) {
+  return useSWR<ArticleRevision[]>(
+    id ? ["admin-article-revisions", id] as const : null,
+    async ([, aid]) => {
+      const wrapped = await apiFetch<{ data: ArticleRevision[] }>(
+        `admin/articles/${aid}/revisions`,
+        { withCredentials: true },
+      );
+      return wrapped.data;
+    },
+    { ...defaults },
+  );
+}
+
+export function usePublicArticleCategories(
+  config?: SWRConfiguration<ArticleCategory[]>,
+) {
+  return useSWR<ArticleCategory[]>(
+    "public-article-categories",
+    async () => {
+      const wrapped = await apiFetch<{ data: ArticleCategory[] }>(
+        "public/article-categories",
+      );
+      return wrapped.data;
+    },
+    { ...defaults, ...config },
+  );
+}
+
+type AdminArticleMutations = {
+  create: (input: CreateArticleInput) => Promise<Article>;
+  update: (id: string, input: UpdateArticleInput, version: number) => Promise<Article>;
+  publish: (id: string) => Promise<Article>;
+  unpublish: (id: string) => Promise<Article>;
+  schedule: (id: string, at: Date) => Promise<Article>;
+  archive: (id: string) => Promise<Article>;
+  unarchive: (id: string) => Promise<Article>;
+  feature: (id: string) => Promise<Article>;
+  remove: (id: string) => Promise<void>;
+  restoreRevision: (articleId: string, revisionId: string) => Promise<Article>;
+  uploadMedia: (file: File, variant: MediaVariant) => Promise<Media>;
+};
+
+export function useAdminArticleMutations(): AdminArticleMutations {
+  return {
+    create: (input) =>
+      apiFetch<Article>("admin/articles", {
+        method: "POST",
+        body: input,
+        withCredentials: true,
+      }),
+    update: (id, input, version) =>
+      apiFetch<Article>(`admin/articles/${id}`, {
+        method: "PATCH",
+        body: input,
+        withCredentials: true,
+        headers: { "If-Match": `"${version}"` },
+      }),
+    publish: (id) =>
+      apiFetch<Article>(`admin/articles/${id}/publish`, {
+        method: "POST",
+        withCredentials: true,
+      }),
+    unpublish: (id) =>
+      apiFetch<Article>(`admin/articles/${id}/unpublish`, {
+        method: "POST",
+        withCredentials: true,
+      }),
+    schedule: (id, at) =>
+      apiFetch<Article>(`admin/articles/${id}/schedule`, {
+        method: "POST",
+        body: { scheduledAt: at.toISOString() },
+        withCredentials: true,
+      }),
+    archive: (id) =>
+      apiFetch<Article>(`admin/articles/${id}/archive`, {
+        method: "POST",
+        withCredentials: true,
+      }),
+    unarchive: (id) =>
+      apiFetch<Article>(`admin/articles/${id}/unarchive`, {
+        method: "POST",
+        withCredentials: true,
+      }),
+    feature: (id) =>
+      apiFetch<Article>(`admin/articles/${id}/feature`, {
+        method: "POST",
+        withCredentials: true,
+      }),
+    remove: (id) =>
+      apiFetch<void>(`admin/articles/${id}`, {
+        method: "DELETE",
+        withCredentials: true,
+      }),
+    restoreRevision: (articleId, revisionId) =>
+      apiFetch<Article>(
+        `admin/articles/${articleId}/revisions/${revisionId}/restore`,
+        { method: "POST", withCredentials: true },
+      ),
+    uploadMedia: async (file, variant) => {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("variant", variant);
+      const base =
+        process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1";
+      const res = await fetch(`${base}/media`, {
+        method: "POST",
+        body: form,
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Media upload failed (${res.status})`);
+      }
+      const json = (await res.json()) as { data: Media };
+      return json.data;
+    },
+  };
 }
 
 // ============================== UNITS ==============================
