@@ -86,6 +86,23 @@ export function useAdminArticle(id: string | null, config?: SWRConfiguration<Art
   );
 }
 
+export function useAdminMedia(id: string | null) {
+  return useSWR<Media | null>(
+    id ? ["admin-media", id] as const : null,
+    async ([, mid]) => {
+      try {
+        const wrapped = await apiFetch<{ data: Media }>(`media/${mid}`, {
+          withCredentials: true,
+        });
+        return wrapped.data;
+      } catch {
+        return null;
+      }
+    },
+    { ...defaults },
+  );
+}
+
 export function useAdminArticleRevisions(id: string | null) {
   return useSWR<ArticleRevision[]>(
     id ? ["admin-article-revisions", id] as const : null,
