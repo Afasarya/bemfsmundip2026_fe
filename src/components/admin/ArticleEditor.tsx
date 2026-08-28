@@ -260,13 +260,20 @@ export default function ArticleEditor({ articleId, onClose, onSaved, notify }: A
               <button
                 type="button"
                 onClick={() => runPromote("feature", () => m.feature(articleId!))}
-                disabled={!!promoting}
+                disabled={!!promoting || article.isFeatured || article.status !== "PUBLISHED"}
                 className={`admin-secondary-button ${
                   article.isFeatured ? "border-bara-gold/40 text-bara-gold" : ""
                 }`}
+                title={
+                  article.status !== "PUBLISHED"
+                    ? "Hanya artikel PUBLISHED yang bisa di-featured"
+                    : article.isFeatured
+                      ? "Sudah ditandai unggulan"
+                      : "Tandai sebagai berita utama"
+                }
               >
                 <Star className="h-3.5 w-3.5" />
-                {article.isFeatured ? "Lepas Unggulan" : "Jadikan Unggulan"}
+                {article.isFeatured ? "Sudah Unggulan" : "Jadikan Unggulan"}
               </button>
             )}
             <button onClick={onClose} className="admin-icon-button">

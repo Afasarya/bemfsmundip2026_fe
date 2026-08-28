@@ -188,7 +188,7 @@ export function useAdminArticleMutations(): AdminArticleMutations {
         withCredentials: true,
       }),
     feature: (id) =>
-      apiFetch<Article>(`admin/articles/${id}/feature`, {
+      apiFetch<Article>(`admin/articles/${id}/featured`, {
         method: "POST",
         withCredentials: true,
       }),
