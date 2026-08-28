@@ -4,33 +4,43 @@ import { motion, useMotionValue, useTransform } from "framer-motion";
 import { Instagram, ArrowRight } from "lucide-react";
 import { useRef, useState, MouseEvent } from "react";
 import MagneticButton from "@/components/ui/MagneticButton";
+import useSWR from "swr";
+import { apiFetch } from "@/lib/api";
+import { placeholderCover } from "@/lib/placeholder";
+import type { InstagramProfileData } from "@/lib/types";
 
-const INSTAGRAM_POSTS = [
-  {
-    shortcode: "DaRk3GIEkQc",
-    url: "https://www.instagram.com/p/DaRk3GIEkQc/",
-  },
-  {
-    shortcode: "DaPblgNkp8P",
-    url: "https://www.instagram.com/p/DaPblgNkp8P/",
-  },
-  {
-    shortcode: "DZ_jS9aEpbj",
-    url: "https://www.instagram.com/p/DZ_jS9aEpbj/",
-  },
-  {
-    shortcode: "DZ7QqjFEr8Y",
-    url: "https://www.instagram.com/p/DZ7QqjFEr8Y/",
-  },
-];
+interface InstagramPost {
+  url: string;
+  caption?: string | null;
+  thumbnail?: string | null;
+}
+
+function toPosts(profile: InstagramProfileData | null | undefined): InstagramPost[] {
+  if (!profile || !profile.latestPostUrl) return [];
+  return [
+    {
+      url: profile.latestPostUrl,
+      caption: profile.latestPostCaption,
+      thumbnail: profile.latestPostImageUrl ?? profile.latestPostMedia?.url ?? null,
+    },
+  ];
+}
+
+function placeholderPost(index: number): InstagramPost {
+  return {
+    url: "#",
+    caption: null,
+    thumbnail: placeholderCover(`Postingan ${index + 1}`, 480, 600),
+  };
+}
 
 function InstagramCard({
-  shortcode,
   url,
+  thumbnail,
   index,
 }: {
-  shortcode: string;
   url: string;
+  thumbnail?: string | null;
   index: number;
 }) {
   const cardRef = useRef<HTMLAnchorElement>(null);
@@ -54,6 +64,9 @@ function InstagramCard({
     mouseX.set(0.5);
     mouseY.set(0.5);
   };
+
+  const useEmbed = !thumbnail;
+  const shortcode = url.match(/\/p\/([^/]+)/)?.[1] ?? "post";
 
   return (
     <motion.a
@@ -83,7 +96,6 @@ function InstagramCard({
       }}
       className="ig-card group relative block cursor-pointer"
     >
-      {/* Glare */}
       <motion.div
         className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-30"
         style={{
@@ -99,7 +111,7 @@ function InstagramCard({
         className="relative w-full overflow-hidden rounded-2xl"
         style={{ aspectRatio: "4 / 5" }}
       >
-        {!isLoaded && (
+        {!isLoaded && useEmbed && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/[0.03] rounded-2xl">
             <div className="w-10 h-10 rounded-full border-2 border-bara-orange/30 border-t-bara-orange animate-spin" />
             <p className="text-[11px] text-white/30 tracking-wide">
@@ -108,24 +120,34 @@ function InstagramCard({
           </div>
         )}
 
-        <iframe
-          src={`https://www.instagram.com/p/${shortcode}/embed/captioned/`}
-          className="ig-embed-frame absolute border-0"
-          style={{
-            top: "-56px",
-            left: "-1px",
-            width: "calc(100% + 2px)",
-            height: "calc(100% + 120px)",
-            opacity: isLoaded ? 1 : 0,
-            transition: "opacity 0.5s ease",
-          }}
-          scrolling="no"
-          loading="lazy"
-          onLoad={() => setIsLoaded(true)}
-          title={`Instagram Post ${shortcode}`}
-        />
+        {useEmbed ? (
+          <iframe
+            src={`https://www.instagram.com/p/${shortcode}/embed/captioned/`}
+            className="ig-embed-frame absolute border-0"
+            style={{
+              top: "-56px",
+              left: "-1px",
+              width: "calc(100% + 2px)",
+              height: "calc(100% + 120px)",
+              opacity: isLoaded ? 1 : 0,
+              transition: "opacity 0.5s ease",
+            }}
+            scrolling="no"
+            loading="lazy"
+            onLoad={() => setIsLoaded(true)}
+            title={`Instagram Post ${shortcode}`}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={thumbnail!}
+            alt={`Instagram post ${shortcode}`}
+            className="absolute inset-0 h-full w-full object-cover"
+            onLoad={() => setIsLoaded(true)}
+            loading="lazy"
+          />
+        )}
 
-        {/* Hover overlay */}
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-all duration-500 rounded-2xl">
           <div className="opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-500 ease-out">
             <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center">
@@ -134,7 +156,7 @@ function InstagramCard({
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/20 to-transparent z-10 rounded-b-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/20 to-transparent z-10 rounded-b-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-500" />
       </div>
 
       <div className="absolute -bottom-[1px] left-1/2 -translate-x-1/2 w-2/3 h-[2px] rounded-full bg-gradient-to-r from-transparent via-bara-orange/0 to-transparent group-hover:via-bara-orange/60 transition-all duration-700 blur-[2px]" />
@@ -143,9 +165,28 @@ function InstagramCard({
 }
 
 export default function NewsInstagram() {
+  const { data: profile } = useSWR<InstagramProfileData | null>(
+    "public-instagram",
+    () => apiFetch<InstagramProfileData | null>("public/instagram"),
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
+
+  const realPosts = toPosts(profile);
+  const posts: InstagramPost[] =
+    realPosts.length >= 4
+      ? realPosts.slice(0, 4)
+      : [
+          ...realPosts,
+          ...Array.from({ length: 4 - realPosts.length }, (_, i) =>
+            placeholderPost(realPosts.length + i),
+          ),
+        ];
+
+  const handle = profile?.handle ?? "bemfsmundip";
+  const profileUrl = profile ? `https://instagram.com/${profile.handle}` : "https://instagram.com/bemfsmundip";
+
   return (
     <section className="relative py-20 md:py-28 overflow-hidden">
-      {/* Background glow */}
       <motion.div
         aria-hidden
         className="absolute top-1/3 -left-40 w-[500px] h-[500px] rounded-full bg-bara-orange/[0.06] blur-[150px]"
@@ -154,7 +195,6 @@ export default function NewsInstagram() {
       />
 
       <div className="max-w-7xl mx-auto px-6 md:px-10">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -177,7 +217,7 @@ export default function NewsInstagram() {
           <div className="flex flex-col items-start md:items-end gap-3">
             <p className="text-white/40 text-sm max-w-sm leading-relaxed md:text-right">
               Ikuti konten visual terbaru dari BEM FSM UNDIP di Instagram
-              resmi @bemfsm_undip.
+              resmi @{handle}.
             </p>
             <div className="flex items-center gap-2">
               <span className="relative flex w-2 h-2">
@@ -191,7 +231,6 @@ export default function NewsInstagram() {
           </div>
         </motion.div>
 
-        {/* Grid */}
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -202,17 +241,16 @@ export default function NewsInstagram() {
           }}
           className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5"
         >
-          {INSTAGRAM_POSTS.map((post, i) => (
+          {posts.map((post, i) => (
             <InstagramCard
-              key={post.shortcode}
-              shortcode={post.shortcode}
+              key={`${post.url}-${i}`}
               url={post.url}
+              thumbnail={post.thumbnail ?? null}
               index={i}
             />
           ))}
         </motion.div>
 
-        {/* CTA */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -221,11 +259,11 @@ export default function NewsInstagram() {
           className="mt-12 flex justify-center"
         >
           <MagneticButton
-            href="https://instagram.com/bemfsm_undip"
+            href={profileUrl}
             className="bg-gradient-to-r from-bara-orange to-bara-red text-white border border-bara-orange/30 hover:shadow-[0_0_50px_-5px_rgba(242,92,5,0.6)]"
           >
             <Instagram className="w-4 h-4" />
-            Ikuti @bemfsm_undip
+            Ikuti @{handle}
             <ArrowRight className="w-4 h-4" />
           </MagneticButton>
         </motion.div>

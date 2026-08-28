@@ -4,40 +4,36 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
-import { ARTICLES } from "@/data/site";
-import type { Article } from "@/data/site";
-
-const categoryColor: Record<string, string> = {
-  Kegiatan: "bg-bara-orange",
-  Prestasi: "bg-bara-gold text-bara-bg-dark",
-  Informasi: "bg-bara-red",
-  Beasiswa: "bg-gradient-to-r from-bara-gold to-bara-orange text-bara-bg-dark",
-  Lomba: "bg-gradient-to-r from-bara-orange to-bara-red",
-};
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "Hari ini";
-  if (days === 1) return "1 hari yang lalu";
-  if (days < 7) return `${days} hari yang lalu`;
-  const weeks = Math.floor(days / 7);
-  if (weeks < 4) return `${weeks} minggu yang lalu`;
-  const months = Math.floor(days / 30);
-  return `${months} bulan yang lalu`;
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
+import useSWR from "swr";
+import { apiFetch } from "@/lib/api";
+import { placeholderCover } from "@/lib/placeholder";
+import type { Article, PaginatedArticles } from "@/lib/types";
+import { articleHref, formatDateId, formatTimeAgo } from "@/lib/format";
 
 export default function NewsBanner() {
-  const pinnedArticle = ARTICLES.find((a) => a.pinned) || ARTICLES[0];
-  const sideArticles = ARTICLES.filter((a) => a.id !== pinnedArticle.id).slice(0, 3);
+  const { data: featured } = useSWR<Article | null>(
+    "public-articles-featured",
+    () => apiFetch<Article | null>("public/articles/featured"),
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
+  const { data: latest } = useSWR<PaginatedArticles>(
+    ["public-articles", { page: 1, pageSize: 4 }] as const,
+    ([, q]) =>
+      apiFetch<PaginatedArticles>("public/articles", {
+        query: q as Record<string, number>,
+      }),
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
+
+  if (!featured) {
+    return <BannerSkeleton />;
+  }
+
+  const sideArticles = (latest?.data ?? [])
+    .filter((a) => a.id !== featured.id)
+    .slice(0, 3);
+
+  const coverUrl = featured.coverMediaId ?? placeholderCover(featured.title, 1200, 750);
 
   return (
     <section className="relative pt-36 pb-16 sm:pt-44 sm:pb-20 overflow-hidden">
@@ -77,21 +73,19 @@ export default function NewsBanner() {
             className="lg:col-span-3"
           >
             <Link
-              href={pinnedArticle.href}
+              href={articleHref(featured.slug)}
               className="group relative block overflow-hidden rounded-2xl aspect-[4/3] sm:aspect-[16/10]"
             >
               <Image
-                src={pinnedArticle.image}
-                alt={pinnedArticle.title}
+                src={coverUrl}
+                alt={featured.coverAlt ?? featured.title}
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 60vw"
                 className="object-cover transition-transform duration-700 group-hover:scale-105"
               />
-              {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 
-              {/* Content on image */}
               <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
                 <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                   <span className="rounded-md bg-bara-orange px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white">
@@ -99,15 +93,17 @@ export default function NewsBanner() {
                   </span>
                   <span className="flex items-center gap-1 text-[11px] sm:text-xs text-white/70">
                     <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    {formatDate(pinnedArticle.date)}
+                    {formatDateId(featured.publishedAt ?? featured.createdAt)}
                   </span>
                 </div>
                 <h2 className="font-display text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-snug text-white max-w-xl line-clamp-2">
-                  {pinnedArticle.title}
+                  {featured.title}
                 </h2>
-                <p className="hidden sm:block mt-2 text-xs sm:text-sm text-white/60 max-w-lg leading-relaxed line-clamp-2">
-                  {pinnedArticle.excerpt}
-                </p>
+                {featured.excerpt && (
+                  <p className="hidden sm:block mt-2 text-xs sm:text-sm text-white/60 max-w-lg leading-relaxed line-clamp-2">
+                    {featured.excerpt}
+                  </p>
+                )}
                 <span className="mt-3 sm:mt-4 inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-bara-orange group-hover:gap-2.5 transition-all">
                   Baca selengkapnya
                   <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -116,16 +112,20 @@ export default function NewsBanner() {
             </Link>
           </motion.div>
 
-          {/* Side list — 3 recent articles */}
+          {/* Side list */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.25 }}
             className="lg:col-span-2 flex flex-col gap-5"
           >
-            {sideArticles.map((article, i) => (
-              <SideNewsItem key={article.id} article={article} index={i} />
-            ))}
+            {sideArticles.length === 0 ? (
+              <p className="text-xs text-white/30">Belum ada berita lain.</p>
+            ) : (
+              sideArticles.map((article, i) => (
+                <SideNewsItem key={article.id} article={article} index={i} />
+              ))
+            )}
           </motion.div>
         </div>
       </div>
@@ -136,27 +136,41 @@ export default function NewsBanner() {
 function SideNewsItem({ article, index }: { article: Article; index: number }) {
   return (
     <Link
-      href={article.href}
+      href={articleHref(article.slug)}
       className="group flex flex-col gap-3 rounded-xl p-4 -mx-4 transition-colors hover:bg-white/[0.03]"
     >
-      <span
-        className={`self-start rounded-md px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white ${
-          categoryColor[article.category] || "bg-bara-orange"
-        }`}
-      >
-        {article.category}
+      <span className="rounded-md bg-bara-orange self-start px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+        {article.status === "PUBLISHED" ? "Tayang" : "Draf"}
       </span>
       <h3 className="font-display text-lg leading-snug text-white/90 group-hover:text-bara-orange transition-colors line-clamp-2">
         {article.title}
       </h3>
       <div className="flex items-center gap-1.5 text-xs text-white/40">
         <Calendar className="w-3 h-3" />
-        {timeAgo(article.date)}
+        {formatTimeAgo(article.publishedAt ?? article.createdAt)}
       </div>
-      {/* Divider */}
-      {index < 2 && (
-        <div className="mt-2 h-px w-full bg-white/[0.06]" />
-      )}
+      {index < 2 && <div className="mt-2 h-px w-full bg-white/[0.06]" />}
     </Link>
+  );
+}
+
+function BannerSkeleton() {
+  return (
+    <section className="relative pt-36 pb-16 sm:pt-44 sm:pb-20">
+      <div className="max-w-7xl mx-auto px-6 md:px-10">
+        <div className="mb-10">
+          <div className="h-3 w-40 animate-pulse rounded bg-white/10" />
+          <div className="mt-5 h-10 w-3/4 animate-pulse rounded bg-white/10" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
+          <div className="lg:col-span-3 aspect-[16/10] animate-pulse rounded-2xl bg-white/5" />
+          <div className="lg:col-span-2 flex flex-col gap-5">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-20 animate-pulse rounded-xl bg-white/[0.04]" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
