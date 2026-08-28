@@ -156,7 +156,7 @@ export function useAdminArticleMutations(): AdminArticleMutations {
       }),
     update: (id, input, version) =>
       apiFetch<Article>(`admin/articles/${id}`, {
-        method: "PATCH",
+        method: "PUT",
         body: input,
         withCredentials: true,
         headers: { "If-Match": `"${version}"` },
