@@ -40,13 +40,13 @@ export default function Footer() {
               Universitas Diponegoro 2026.
             </p>
             <div className="flex items-center gap-3 mt-6">
-              <a href="#" aria-label="Instagram" className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/60 hover:text-bara-gold hover:border-bara-gold/40 transition-all">
+              <a href="https://www.instagram.com/bemfsm_undip/" aria-label="Instagram" className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/60 hover:text-bara-gold hover:border-bara-gold/40 transition-all">
                 <Instagram className="w-4 h-4" />
               </a>
-              <a href="#" aria-label="YouTube" className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/60 hover:text-bara-gold hover:border-bara-gold/40 transition-all">
+              <a href="https://www.youtube.com/@BEMFSM" aria-label="YouTube" className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/60 hover:text-bara-gold hover:border-bara-gold/40 transition-all">
                 <Youtube className="w-4 h-4" />
               </a>
-              <a href="#" aria-label="Email" className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/60 hover:text-bara-gold hover:border-bara-gold/40 transition-all">
+              <a href="mailto:bemfsmundip.official2@gmail.com" aria-label="Email" className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/60 hover:text-bara-gold hover:border-bara-gold/40 transition-all">
                 <Mail className="w-4 h-4" />
               </a>
             </div>
@@ -84,10 +84,10 @@ export default function Footer() {
             <p className="text-xs uppercase tracking-widest text-white/40 mb-4">Sekretariat</p>
             <p className="text-sm text-white/60 leading-relaxed inline-flex gap-2">
               <MapPin className="w-4 h-4 mt-0.5 text-bara-gold/70 shrink-0" />
-              <span>
-                Gedung Dekanat FSM Lantai 1<br />
+              <span className="hover:text-white ">
+                <a href="https://maps.app.goo.gl/fMgbWRpsg6BdWBzW6">Gedung Dekanat FSM Lantai 1<br />
                 Universitas Diponegoro<br />
-                Semarang, Jawa Tengah 50275
+                Semarang, Jawa Tengah 50275</a>
               </span>
             </p>
           </div>
