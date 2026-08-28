@@ -63,15 +63,19 @@ async function unwrap<T>(res: Response): Promise<T> {
   }
 
   if (!res.ok) {
-    const err = json as { message?: unknown; code?: unknown; details?: unknown } | null;
+    // Backend wraps errors as { error: { message, code, fields? } }.
+    const root = json as { error?: { message?: unknown; code?: unknown; fields?: unknown } };
+    const err = (root.error ?? root) as { message?: unknown; code?: unknown; details?: unknown };
+    const rawMsg = err?.message;
     const message =
-      (Array.isArray(err?.message) ? (err!.message as string[]).join(", ") : (err?.message as string)) ||
+      (Array.isArray(rawMsg) ? (rawMsg as string[]).join(", ") : (rawMsg as string)) ||
       `Request failed with status ${res.status}`;
+    const fields = (root.error as { fields?: unknown } | undefined)?.fields;
     throw new ApiClientError(
       res.status,
       message,
       (err?.code as string | undefined) ?? undefined,
-      err?.details,
+      fields,
     );
   }
 
