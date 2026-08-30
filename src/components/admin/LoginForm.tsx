@@ -20,10 +20,14 @@ export default function LoginForm() {
       await login(email.trim(), password);
       // AuthProvider updates state; the page re-renders with the dashboard.
     } catch (err) {
+      console.error("[LoginForm] login failed:", err);
       if (err instanceof ApiClientError) {
         if (err.status === 401) setError("Email atau kata sandi salah.");
         else if (err.status === 429) setError("Terlalu banyak percobaan. Coba lagi nanti.");
         else setError(err.message || "Gagal masuk.");
+      } else if (err instanceof TypeError) {
+        // fetch() network failures throw TypeError in browsers.
+        setError(`Gagal terhubung: ${err.message}. Pastikan backend berjalan di ${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1"}.`);
       } else {
         setError("Gagal masuk. Periksa koneksi Anda.");
       }
