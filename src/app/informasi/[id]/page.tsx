@@ -52,7 +52,7 @@ export default async function ArticleDetailPage({ params }: { params: { id: stri
   }
 
   const related = latest.filter((a) => a.id !== article.id).slice(0, 3);
-  const coverUrl = article.coverMediaId ?? placeholderCover(article.title, 1200, 675);
+  const coverUrl = article.coverUrl ?? placeholderCover(article.title, 1200, 675);
   const publishedDate = formatDateId(article.publishedAt ?? article.createdAt);
 
   return (
@@ -164,7 +164,7 @@ export default async function ArticleDetailPage({ params }: { params: { id: stri
                 {related.length > 0 ? (
                   <div className="flex flex-col gap-4">
                     {related.map((a) => {
-                      const url = a.coverMediaId ?? placeholderCover(a.title, 200, 200);
+                      const url = a.coverUrl ?? placeholderCover(a.title, 200, 200);
                       return (
                         <Link
                           key={a.id}

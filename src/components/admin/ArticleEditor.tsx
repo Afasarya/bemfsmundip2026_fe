@@ -63,7 +63,7 @@ function articleToForm(a: Article, mediaUrl?: string | null): FormState {
     excerpt: a.excerpt ?? "",
     content: a.content,
     cover: a.coverMediaId
-      ? { mediaId: a.coverMediaId, url: mediaUrl ?? "", alt: a.coverAlt }
+      ? { mediaId: a.coverMediaId, url: a.coverUrl ?? mediaUrl ?? "", alt: a.coverAlt }
       : null,
     coverAlt: a.coverAlt ?? "",
     categoryId: a.categoryId ?? "",

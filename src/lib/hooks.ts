@@ -10,7 +10,9 @@ import type {
   CreateCategoryInput,
   CreateInstagramPostInput,
   CreateUnitInput,
+  InstagramPlacementType,
   InstagramPost,
+  InstagramPostListItem,
   InstagramPostListResponse,
   InstagramProfileData,
   Media,
@@ -100,10 +102,9 @@ export function useAdminMedia(id: string | null) {
     id ? ["admin-media", id] as const : null,
     async ([, mid]) => {
       try {
-        const wrapped = await apiFetch<{ data: Media }>(`media/${mid}`, {
+        return await apiFetch<Media>(`media/${mid}`, {
           withCredentials: true,
         });
-        return wrapped.data;
       } catch {
         return null;
       }
@@ -115,13 +116,10 @@ export function useAdminMedia(id: string | null) {
 export function useAdminArticleRevisions(id: string | null) {
   return useSWR<ArticleRevision[]>(
     id ? ["admin-article-revisions", id] as const : null,
-    async ([, aid]) => {
-      const wrapped = await apiFetch<{ data: ArticleRevision[] }>(
-        `admin/articles/${aid}/revisions`,
-        { withCredentials: true },
-      );
-      return wrapped.data;
-    },
+    async ([, aid]) =>
+      apiFetch<ArticleRevision[]>(`admin/articles/${aid}/revisions`, {
+        withCredentials: true,
+      }),
     { ...defaults },
   );
 }
@@ -131,12 +129,7 @@ export function usePublicArticleCategories(
 ) {
   return useSWR<ArticleCategory[]>(
     "public-article-categories",
-    async () => {
-      const wrapped = await apiFetch<{ data: ArticleCategory[] }>(
-        "public/article-categories",
-      );
-      return wrapped.data;
-    },
+    () => apiFetch<ArticleCategory[]>("public/article-categories"),
     { ...defaults, ...config },
   );
 }
@@ -215,12 +208,12 @@ export function useAdminArticleMutations(): AdminArticleMutations {
       const form = new FormData();
       form.append("file", file);
       form.append("variant", variant);
-      const json = await apiFetch<{ data: Media }>("media", {
+      // apiFetch unwraps { data: T } -> T.
+      return apiFetch<Media>("media", {
         method: "POST",
         body: form,
         withCredentials: true,
       });
-      return json.data;
     },
   };
 }
@@ -255,6 +248,19 @@ export function useInstagramProfile(config?: SWRConfiguration<InstagramProfileDa
   return useSWR<InstagramProfileData | null>(
     "public-instagram",
     () => apiFetch<InstagramProfileData | null>("public/instagram"),
+    { ...defaults, ...config },
+  );
+}
+
+// Highlighted published posts for a placement (HOME | INFORMATION).
+// Returns the raw array — backend does not wrap it in {data, meta} for this endpoint.
+export function usePublicInstagramPosts(
+  placement: InstagramPlacementType = "HOME",
+  config?: SWRConfiguration<InstagramPostListItem[]>,
+) {
+  return useSWR<InstagramPostListItem[]>(
+    ["public-instagram-posts", placement] as const,
+    ([, p]) => apiFetch<InstagramPostListItem[]>(`public/instagram-posts?placement=${p}`),
     { ...defaults, ...config },
   );
 }
@@ -386,7 +392,7 @@ export function useAdminUnitMutations() {
 type AdminInstagramParams = {
   page?: number;
   pageSize?: number;
-  placement?: "HOME" | "ABOUT" | "ARCHIVE";
+  placement?: InstagramPlacementType;
   status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
 };
 
@@ -437,14 +443,14 @@ export function useAdminInstagramMutations() {
       }),
     toggleHighlight: (
       id: string,
-      placement: "HOME" | "ABOUT" | "ARCHIVE",
+      placement: InstagramPlacementType,
     ) =>
       apiFetch<InstagramPost>(`admin/instagram-posts/${id}/highlight`, {
         method: "PATCH",
         body: { placement },
         withCredentials: true,
       }),
-    reorder: (placement: "HOME" | "ABOUT" | "ARCHIVE", orderedIds: string[]) =>
+    reorder: (placement: InstagramPlacementType, orderedIds: string[]) =>
       apiFetch<void>("admin/instagram-posts/reorder", {
         method: "PATCH",
         body: { placement, orderedIds },
@@ -460,13 +466,10 @@ export function useAdminArticleCategories(
 ) {
   return useSWR<ArticleCategory[]>(
     "admin-article-categories",
-    async () => {
-      const wrapped = await apiFetch<{ data: ArticleCategory[] }>(
-        "admin/article-categories",
-        { withCredentials: true },
-      );
-      return wrapped.data;
-    },
+    () =>
+      apiFetch<ArticleCategory[]>("admin/article-categories", {
+        withCredentials: true,
+      }),
     { ...defaults, ...config },
   );
 }

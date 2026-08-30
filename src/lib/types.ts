@@ -35,6 +35,9 @@ export type Article = {
   excerpt: string | null;
   content: string;
   coverMediaId: string | null;
+  coverUrl: string | null;
+  coverWidth: number | null;
+  coverHeight: number | null;
   categoryId: string | null;
   authorId: string | null;
   status: ArticleStatus;
@@ -289,7 +292,7 @@ export type UnitListResponse = {
 // Instagram posts (admin CRUD)
 // ============================================================
 
-export type InstagramPlacementType = "HOME" | "ABOUT" | "ARCHIVE";
+export type InstagramPlacementType = "HOME" | "INFORMATION";
 export type InstagramPostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 export type InstagramContentType = "POST" | "REEL" | "CAROUSEL";
 

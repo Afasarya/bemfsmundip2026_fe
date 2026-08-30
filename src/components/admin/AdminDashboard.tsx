@@ -9,6 +9,7 @@ import {
   LayoutDashboard, Link2, LogOut, Menu, Pencil,
   Plus, Search, Settings, Sparkles, Trash2, Users, X,
 } from "lucide-react";
+import { useSWRConfig } from "swr";
 import {
   useAdminArticleCategories,
   useAdminArticleCategoryMutations,
@@ -1002,29 +1003,66 @@ function EditorDrawer({
   onSaved: () => void;
   notify: (msg: string) => void;
 }) {
+  const { mutate } = useSWRConfig();
+  // After any save, invalidate every cache key that may show stale data for this kind.
+  // Most keys are arrays with the namespace as first element (e.g. ["admin-articles", params]).
+  const matchesKey = (namespace: string) => (key: unknown) =>
+    (typeof key === "string" && key === namespace) ||
+    (Array.isArray(key) && key[0] === namespace);
+
+  const invalidate = async () => {
+    const namespaces: Record<Exclude<DrawerKind, null>, string[]> = {
+      instagram: ["admin-instagram-posts", "admin-dashboard", "public-instagram-posts"],
+      unit: ["admin-units", "admin-dashboard", "public-units"],
+      news: [
+        "admin-articles",
+        "admin-dashboard",
+        "admin-article",
+        "admin-article-revisions",
+        "admin-media",
+        "public-articles",
+        "public-articles-featured",
+      ],
+      category: [
+        "admin-article-categories",
+        "admin-dashboard",
+        "admin-articles",
+        "public-article-categories",
+      ],
+    };
+    await Promise.all(
+      namespaces[kind].map((ns) => mutate(matchesKey(ns), undefined, { revalidate: true })),
+    );
+  };
+
+  const handleSaved = async () => {
+    onSaved();
+    await invalidate();
+  };
+
   if (kind === "news") {
     return (
       <ArticleEditor
         articleId={editing}
         onClose={onClose}
-        onSaved={() => onSaved()}
+        onSaved={handleSaved}
         notify={notify}
       />
     );
   }
   if (kind === "unit") {
     return (
-      <UnitDrawer unitId={editing} onClose={onClose} onSaved={onSaved} notify={notify} />
+      <UnitDrawer unitId={editing} onClose={onClose} onSaved={handleSaved} notify={notify} />
     );
   }
   if (kind === "instagram") {
     return (
-      <InstagramDrawer postId={editing} onClose={onClose} onSaved={onSaved} notify={notify} />
+      <InstagramDrawer postId={editing} onClose={onClose} onSaved={handleSaved} notify={notify} />
     );
   }
   if (kind === "category") {
     return (
-      <CategoryDrawer categoryId={editing} onClose={onClose} onSaved={onSaved} notify={notify} />
+      <CategoryDrawer categoryId={editing} onClose={onClose} onSaved={handleSaved} notify={notify} />
     );
   }
   return null;

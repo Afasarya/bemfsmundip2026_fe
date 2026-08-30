@@ -6,33 +6,36 @@ import { useRef, useState, MouseEvent } from "react";
 import MagneticButton from "@/components/ui/MagneticButton";
 import useSWR from "swr";
 import { apiFetch } from "@/lib/api";
-import type { InstagramProfileData } from "@/lib/types";
+import type { InstagramPostListItem } from "@/lib/types";
 import { placeholderCover } from "@/lib/placeholder";
 
 interface InstagramPost {
   url: string;
   caption?: string | null;
   thumbnail?: string | null;
+  shortcode: string;
 }
 
-function toPosts(profile: InstagramProfileData | null | undefined): InstagramPost[] {
-  if (!profile || !profile.latestPostUrl) return [];
-  return [
-    {
-      url: profile.latestPostUrl,
-      caption: profile.latestPostCaption,
-      thumbnail: profile.latestPostImageUrl ?? profile.latestPostMedia?.url ?? null,
-    },
-  ];
+function toPosts(items: InstagramPostListItem[] | undefined): InstagramPost[] {
+  if (!items) return [];
+  return items.map((p) => ({
+    url: p.canonicalUrl,
+    caption: p.internalTitle,
+    shortcode: p.shortcode,
+    // No image stored for admin-managed posts; the card falls back to the iframe embed.
+    thumbnail: null,
+  }));
 }
 
 function InstagramCard({
   url,
   thumbnail,
+  shortcode,
   index,
 }: {
   url: string;
   thumbnail?: string | null;
+  shortcode: string;
   index: number;
 }) {
   const cardRef = useRef<HTMLAnchorElement>(null);
@@ -59,7 +62,6 @@ function InstagramCard({
 
   // If a thumbnail URL is provided, render it instead of the iframe for SSR/quality reasons.
   const useEmbed = !thumbnail;
-  const shortcode = url.match(/\/p\/([^/]+)/)?.[1] ?? "post";
 
   return (
     <motion.a
@@ -159,28 +161,30 @@ function placeholderPost(index: number): InstagramPost {
   return {
     url: "#",
     caption: null,
+    shortcode: `placeholder-${index}`,
     thumbnail: placeholderCover(`Postingan ${index + 1}`, 480, 600),
   };
 }
 
 export default function InstagramSection() {
-  const { data: profile } = useSWR<InstagramProfileData | null>(
-    "public-instagram",
-    () => apiFetch<InstagramProfileData | null>("public/instagram"),
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  const { data: posts, isLoading } = useSWR<InstagramPostListItem[]>(
+    ["public-instagram-posts", "HOME"] as const,
+    ([, p]) => apiFetch<InstagramPostListItem[]>(`public/instagram-posts?placement=${p}`),
+    { revalidateOnFocus: false, dedupingInterval: 30_000 },
   );
 
-  const realPosts = toPosts(profile);
-  const posts: InstagramPost[] =
+  const realPosts = toPosts(posts).slice(0, 4);
+  const items: InstagramPost[] =
     realPosts.length >= 4
-      ? realPosts.slice(0, 4)
+      ? realPosts
       : [
           ...realPosts,
           ...Array.from({ length: 4 - realPosts.length }, (_, i) => placeholderPost(realPosts.length + i)),
         ];
 
-  const handle = profile?.handle ?? "bemfsmundip";
-  const profileUrl = profile ? `https://instagram.com/${profile.handle}` : "https://instagram.com/bemfsmundip";
+  const handle = "bemfsmundip";
+  const profileUrl = `https://instagram.com/${handle}`;
+  const showSkeleton = isLoading && realPosts.length === 0;
 
   return (
     <section className="relative overflow-hidden py-20 md:py-28">
@@ -241,14 +245,22 @@ export default function InstagramSection() {
           }}
           className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5"
         >
-          {posts.map((post, i) => (
-            <InstagramCard
-              key={`${post.url}-${i}`}
-              url={post.url}
-              thumbnail={post.thumbnail ?? null}
-              index={i}
-            />
-          ))}
+          {showSkeleton
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={`sk-${i}`}
+                  className="aspect-[4/5] animate-pulse rounded-2xl bg-white/[0.03]"
+                />
+              ))
+            : items.map((post, i) => (
+                <InstagramCard
+                  key={`${post.shortcode}-${i}`}
+                  url={post.url}
+                  thumbnail={post.thumbnail ?? null}
+                  shortcode={post.shortcode}
+                  index={i}
+                />
+              ))}
         </motion.div>
 
         <motion.div

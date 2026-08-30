@@ -50,19 +50,19 @@ export default function MediaPicker({
       setCurrent(null);
       return;
     }
-    apiFetch<{ data: MediaItem }>(`media/${value}`, { withCredentials: true })
-      .then((res) => setCurrent(res.data))
+    apiFetch<MediaItem>(`media/${value}`, { withCredentials: true })
+      .then(setCurrent)
       .catch(() => setCurrent(null));
   }, [value]);
 
   const refreshGallery = async () => {
     setGalleryLoading(true);
     try {
-      const wrapped = await apiFetch<{ data: MediaItem[] }>(
+      const items = await apiFetch<MediaItem[]>(
         `media?variant=${variant}&pageSize=24`,
         { withCredentials: true },
       );
-      setGallery(wrapped.data);
+      setGallery(items);
     } catch {
       setGallery([]);
     } finally {
@@ -82,15 +82,14 @@ export default function MediaPicker({
       form.append("file", file);
       form.append("variant", variant);
 
-      // Use apiFetch so Authorization + auto-refresh on 401 works.
-      // apiFetch accepts FormData directly and skips JSON Content-Type.
-      const json = await apiFetch<{ data: MediaItem }>("media", {
+      // apiFetch already unwraps { data: T } -> T, so type as MediaItem directly.
+      const created = await apiFetch<MediaItem>("media", {
         method: "POST",
         body: form,
         withCredentials: true,
       });
-      setCurrent(json.data);
-      onChange(json.data.id, json.data.url);
+      setCurrent(created);
+      onChange(created.id, created.url);
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Upload gagal.";

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Calendar, ArrowRight } from "lucide-react";
+import { Calendar, ArrowRight, Newspaper } from "lucide-react";
 import useSWR from "swr";
 import { apiFetch } from "@/lib/api";
 import { placeholderCover } from "@/lib/placeholder";
@@ -11,7 +11,8 @@ import type { Article, PaginatedArticles } from "@/lib/types";
 import { articleHref, formatDateId, formatTimeAgo } from "@/lib/format";
 
 export default function NewsBanner() {
-  const { data: featured } = useSWR<Article | null>(
+  // Header text is always rendered. Featured + side list populate when data arrives.
+  const { data: featured, isLoading: featuredLoading } = useSWR<Article | null>(
     "public-articles-featured",
     () => apiFetch<Article | null>("public/articles/featured"),
     { revalidateOnFocus: false, dedupingInterval: 60_000 },
@@ -25,15 +26,10 @@ export default function NewsBanner() {
     { revalidateOnFocus: false, dedupingInterval: 60_000 },
   );
 
-  if (!featured) {
-    return <BannerSkeleton />;
-  }
-
+  const showSkeleton = featuredLoading && !featured;
   const sideArticles = (latest?.data ?? [])
-    .filter((a) => a.id !== featured.id)
+    .filter((a) => a.id !== featured?.id)
     .slice(0, 3);
-
-  const coverUrl = featured.coverMediaId ?? placeholderCover(featured.title, 1200, 750);
 
   return (
     <section className="relative pt-36 pb-16 sm:pt-44 sm:pb-20 overflow-hidden">
@@ -44,7 +40,7 @@ export default function NewsBanner() {
       />
 
       <div className="max-w-7xl mx-auto px-6 md:px-10">
-        {/* Section label */}
+        {/* Section label — always visible */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -61,10 +57,19 @@ export default function NewsBanner() {
             Update Berita &{" "}
             <span className="italic gradient-text">Bara Momentum</span>
           </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/55 sm:text-base">
+            Kabar terbaru, pengumuman, dan liputan program kerja Kabinet Bara
+            Momentum untuk mahasiswa FSM UNDIP.
+          </p>
         </motion.div>
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
+        {/* Featured + side content */}
+        {showSkeleton ? (
+          <ContentSkeleton />
+        ) : !featured ? (
+          <EmptyBanner />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
           {/* Pinned article — large card */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -77,7 +82,7 @@ export default function NewsBanner() {
               className="group relative block overflow-hidden rounded-2xl aspect-[4/3] sm:aspect-[16/10]"
             >
               <Image
-                src={coverUrl}
+                src={featured.coverUrl ?? placeholderCover(featured.title, 1200, 750)}
                 alt={featured.coverAlt ?? featured.title}
                 fill
                 priority
@@ -128,8 +133,23 @@ export default function NewsBanner() {
             )}
           </motion.div>
         </div>
+        )}
       </div>
     </section>
+  );
+}
+
+function EmptyBanner() {
+  return (
+    <div className="grid place-items-center rounded-3xl border border-dashed border-white/10 bg-white/[0.015] px-6 py-16 text-center">
+      <Newspaper className="h-10 w-10 text-white/15" />
+      <p className="mt-4 text-sm text-white/55">
+        Belum ada berita utama yang ditandai.
+      </p>
+      <p className="mt-1 text-xs text-white/30">
+        Pilih berita utama dari dasbor admin untuk menampilkannya di sini.
+      </p>
+    </div>
   );
 }
 
@@ -154,23 +174,15 @@ function SideNewsItem({ article, index }: { article: Article; index: number }) {
   );
 }
 
-function BannerSkeleton() {
+function ContentSkeleton() {
   return (
-    <section className="relative pt-36 pb-16 sm:pt-44 sm:pb-20">
-      <div className="max-w-7xl mx-auto px-6 md:px-10">
-        <div className="mb-10">
-          <div className="h-3 w-40 animate-pulse rounded bg-white/10" />
-          <div className="mt-5 h-10 w-3/4 animate-pulse rounded bg-white/10" />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
-          <div className="lg:col-span-3 aspect-[16/10] animate-pulse rounded-2xl bg-white/5" />
-          <div className="lg:col-span-2 flex flex-col gap-5">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-20 animate-pulse rounded-xl bg-white/[0.04]" />
-            ))}
-          </div>
-        </div>
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
+      <div className="lg:col-span-3 aspect-[16/10] animate-pulse rounded-2xl bg-white/5" />
+      <div className="lg:col-span-2 flex flex-col gap-5">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-20 animate-pulse rounded-xl bg-white/[0.04]" />
+        ))}
       </div>
-    </section>
+    </div>
   );
 }

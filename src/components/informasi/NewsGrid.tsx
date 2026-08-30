@@ -116,7 +116,7 @@ export default function NewsGrid() {
                   >
                     <div className="relative aspect-[16/10] overflow-hidden">
                       <Image
-                        src={article.coverMediaId ?? placeholderCover(article.title)}
+                        src={article.coverUrl ?? placeholderCover(article.title)}
                         alt={article.coverAlt ?? article.title}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
