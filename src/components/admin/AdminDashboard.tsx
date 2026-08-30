@@ -249,7 +249,7 @@ function Sidebar({
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-bara-orange to-bara-red text-xs font-bold">AF</div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold">Admin</p>
-            <p className="truncate text-[10px] text-white/30">admin@bemfsm.id</p>
+            <p className="truncate text-[10px] text-white/30">admin@bemfsmundip.com</p>
           </div>
           <LogOut className="h-4 w-4 text-white/25" />
         </div>
