@@ -7,6 +7,7 @@ import {
   useAdminInstagramPost,
   useAdminInstagramMutations,
 } from "@/lib/hooks";
+import { ApiClientError } from "@/lib/api";
 import type {
   CreateInstagramPostInput,
   InstagramPostStatus,
@@ -79,8 +80,12 @@ export default function InstagramDrawer({ postId, onClose, onSaved, notify }: Pr
       }
       onSaved();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Gagal menyimpan post.";
-      notify(msg);
+      if (err instanceof ApiClientError && err.status === 422) {
+        const firstFieldError = Object.values(err.getFieldErrors())[0]?.[0];
+        notify(`Validasi gagal: ${firstFieldError ?? err.message}`);
+      } else {
+        notify(err instanceof Error ? err.message : "Gagal menyimpan post.");
+      }
     } finally {
       setSubmitting(false);
     }

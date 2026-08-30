@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import AdminDrawer from "./AdminDrawer";
 import { Field, TextArea, TextInput, Select, SectionTitle, ArrayField } from "./FormFields";
+import MediaPicker from "./MediaPicker";
 import {
   useAdminUnit,
   useAdminUnitMutations,
 } from "@/lib/hooks";
+import { ApiClientError } from "@/lib/api";
 import type {
   CreateUnitInput,
   UnitDetail,
@@ -199,8 +201,14 @@ export default function UnitDrawer({ unitId, onClose, onSaved, notify }: Props) 
       }
       onSaved();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Gagal menyimpan unit.";
-      notify(msg);
+      if (err instanceof ApiClientError && err.status === 422) {
+        const fields = err.getFieldErrors();
+        const firstFieldError = Object.values(fields)[0]?.[0];
+        notify(`Validasi gagal: ${firstFieldError ?? err.message}`);
+      } else {
+        const msg = err instanceof Error ? err.message : "Gagal menyimpan unit.";
+        notify(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -306,11 +314,12 @@ export default function UnitDrawer({ unitId, onClose, onSaved, notify }: Props) 
                 onChange={(e) => update("sortOrder", Number(e.target.value) || 0)}
               />
             </Field>
-            <Field label="Logo (media id)" hint="UUID dariunggah sebelumnya">
-              <TextInput
-                value={form.logoMediaId}
-                onChange={(e) => update("logoMediaId", e.target.value)}
-                placeholder="uuid media"
+            <Field label="Logo" hint="Otomatis terunggah ke galeri">
+              <MediaPicker
+                label=""
+                variant="logo"
+                value={form.logoMediaId || null}
+                onChange={(id) => update("logoMediaId", id ?? "")}
               />
             </Field>
           </div>
@@ -457,18 +466,19 @@ export default function UnitDrawer({ unitId, onClose, onSaved, notify }: Props) 
                     placeholder="Jabatan"
                   />
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <TextInput
-                    value={item.photoMediaId ?? ""}
-                    onChange={(e) => setItem({ ...item, photoMediaId: e.target.value })}
-                    placeholder="UUID foto"
+                <div>
+                  <MediaPicker
+                    label="Foto"
+                    variant="photo"
+                    value={item.photoMediaId ?? null}
+                    onChange={(id) => setItem({ ...item, photoMediaId: id ?? "" })}
                   />
-                  <TextInput
+                </div>
+                <TextInput
                     value={item.photoAlt ?? ""}
                     onChange={(e) => setItem({ ...item, photoAlt: e.target.value })}
                     placeholder="Alt foto"
                   />
-                </div>
                 <div className="grid gap-2 sm:grid-cols-3">
                   <TextInput
                     value={item.instagramUrl ?? ""}

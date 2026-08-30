@@ -7,6 +7,7 @@ import {
   useAdminArticleCategories,
   useAdminArticleCategoryMutations,
 } from "@/lib/hooks";
+import { ApiClientError } from "@/lib/api";
 import type { ArticleCategory, CreateCategoryInput, UpdateCategoryInput } from "@/lib/types";
 
 type Props = {
@@ -79,8 +80,12 @@ export default function CategoryDrawer({ categoryId, onClose, onSaved, notify }:
       }
       onSaved();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Gagal menyimpan kategori.";
-      notify(msg);
+      if (err instanceof ApiClientError && err.status === 422) {
+        const firstFieldError = Object.values(err.getFieldErrors())[0]?.[0];
+        notify(`Validasi gagal: ${firstFieldError ?? err.message}`);
+      } else {
+        notify(err instanceof Error ? err.message : "Gagal menyimpan kategori.");
+      }
     } finally {
       setSubmitting(false);
     }

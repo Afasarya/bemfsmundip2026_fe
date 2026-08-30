@@ -30,6 +30,22 @@ export class ApiClientError extends Error implements ApiError {
     this.code = code;
     this.details = details;
   }
+
+  /**
+   * Extract per-field validation messages from a BE VALIDATION_ERROR response.
+   * `details` shape: { fields: { fieldName: string[] } }.
+   */
+  getFieldErrors(): Record<string, string[]> {
+    if (!this.details || typeof this.details !== "object") return {};
+    const fields = (this.details as { fields?: Record<string, unknown> }).fields;
+    if (!fields || typeof fields !== "object") return {};
+    const out: Record<string, string[]> = {};
+    for (const [k, v] of Object.entries(fields)) {
+      if (Array.isArray(v)) out[k] = v.map(String);
+      else if (typeof v === "string") out[k] = [v];
+    }
+    return out;
+  }
 }
 
 function buildUrl(path: string, query?: FetchOptions["query"]): string {
