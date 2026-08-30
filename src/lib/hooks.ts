@@ -215,19 +215,11 @@ export function useAdminArticleMutations(): AdminArticleMutations {
       const form = new FormData();
       form.append("file", file);
       form.append("variant", variant);
-      const base =
-        process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1";
-      const res = await fetch(`${base}/media`, {
+      const json = await apiFetch<{ data: Media }>("media", {
         method: "POST",
         body: form,
-        credentials: "include",
-        headers: { Accept: "application/json" },
+        withCredentials: true,
       });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Media upload failed (${res.status})`);
-      }
-      const json = (await res.json()) as { data: Media };
       return json.data;
     },
   };

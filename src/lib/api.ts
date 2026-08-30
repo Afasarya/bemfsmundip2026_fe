@@ -120,9 +120,15 @@ export async function apiFetch<T>(
   // Auto-inject access token from localStorage for admin/authenticated calls.
   const storedToken = typeof window !== "undefined" ? localStorage.getItem("bemfsm_access_token") : null;
   const hasAuth = !!(headers && Object.keys(headers).some((k) => k.toLowerCase() === "authorization"));
+  // FormData/Blob: let the browser set Content-Type with the right boundary.
+  const isMultipart =
+    typeof FormData !== "undefined" &&
+    (body instanceof FormData ||
+      (typeof Blob !== "undefined" && body instanceof Blob) ||
+      (typeof ArrayBuffer !== "undefined" && body instanceof ArrayBuffer));
   const finalHeaders: Record<string, string> = {
     Accept: "application/json",
-    ...(body ? { "Content-Type": "application/json" } : {}),
+    ...(body && !isMultipart ? { "Content-Type": "application/json" } : {}),
     ...(headers ?? {}),
     ...(storedToken && !hasAuth ? { Authorization: `Bearer ${storedToken}` } : {}),
   };
@@ -134,7 +140,11 @@ export async function apiFetch<T>(
   };
 
   if (body !== undefined) {
-    init.body = typeof body === "string" ? body : JSON.stringify(body);
+    if (typeof body === "string" || isMultipart) {
+      init.body = body;
+    } else {
+      init.body = JSON.stringify(body);
+    }
   }
 
   let res = await fetch(url, init);

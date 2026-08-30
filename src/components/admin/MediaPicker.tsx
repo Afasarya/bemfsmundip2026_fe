@@ -81,24 +81,20 @@ export default function MediaPicker({
       const form = new FormData();
       form.append("file", file);
       form.append("variant", variant);
-      const base =
-        API_BASE_URL ||
-        (typeof window !== "undefined" ? `${window.location.origin}/api/v1` : "");
-      const res = await fetch(`${base}/media`, {
+
+      // Use apiFetch so Authorization + auto-refresh on 401 works.
+      // apiFetch accepts FormData directly and skips JSON Content-Type.
+      const json = await apiFetch<{ data: MediaItem }>("media", {
         method: "POST",
         body: form,
-        credentials: "include",
-        headers: { Accept: "application/json" },
+        withCredentials: true,
       });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Upload gagal (${res.status})`);
-      }
-      const json = (await res.json()) as { data: MediaItem };
       setCurrent(json.data);
       onChange(json.data.id, json.data.url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload gagal.");
+      const msg =
+        err instanceof Error ? err.message : "Upload gagal.";
+      setError(msg);
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
