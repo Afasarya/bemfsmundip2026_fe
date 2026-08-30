@@ -7,6 +7,11 @@ import type {
   ArticleCategory,
   ArticleRevision,
   CreateArticleInput,
+  CreateCategoryInput,
+  CreateInstagramPostInput,
+  CreateUnitInput,
+  InstagramPost,
+  InstagramPostListResponse,
   InstagramProfileData,
   Media,
   MediaVariant,
@@ -14,7 +19,11 @@ import type {
   PublicDashboard,
   UnitDetail,
   UnitListItem,
+  UnitListResponse,
   UpdateArticleInput,
+  UpdateCategoryInput,
+  UpdateInstagramPostInput,
+  UpdateUnitInput,
 } from "./types";
 
 type ListParams = {
@@ -304,4 +313,190 @@ export function useAdminDelete<TResult = unknown>(
       apiFetch<TResult>(url, { method: "DELETE", withCredentials: true }),
     config,
   );
+}
+
+// ============================== ADMIN UNITS ==============================
+
+type AdminUnitsParams = {
+  page?: number;
+  pageSize?: number;
+  type?: "TEAM" | "BUREAU" | "DIVISION";
+  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  search?: string;
+};
+
+export function useAdminUnits(
+  params?: AdminUnitsParams,
+  config?: SWRConfiguration<UnitListResponse>,
+) {
+  return useSWR<UnitListResponse>(
+    ["admin-units", params ?? null] as const,
+    async ([, q]) =>
+      apiFetch<UnitListResponse>("admin/organization-units", {
+        query: q as Record<string, string | number | undefined>,
+        withCredentials: true,
+      }),
+    { ...defaults, ...config },
+  );
+}
+
+export function useAdminUnit(id: string | null, config?: SWRConfiguration<UnitDetail>) {
+  return useSWR<UnitDetail>(
+    id ? ["admin-unit", id] as const : null,
+    async ([, uid]) =>
+      apiFetch<UnitDetail>(`admin/organization-units/${uid}`, {
+        withCredentials: true,
+      }),
+    { ...defaults, ...config },
+  );
+}
+
+export function useAdminUnitMutations() {
+  return {
+    create: (input: CreateUnitInput) =>
+      apiFetch<UnitDetail>("admin/organization-units", {
+        method: "POST",
+        body: input,
+        withCredentials: true,
+      }),
+    update: (id: string, input: UpdateUnitInput) =>
+      apiFetch<UnitDetail>(`admin/organization-units/${id}`, {
+        method: "PATCH",
+        body: input,
+        withCredentials: true,
+      }),
+    remove: (id: string) =>
+      apiFetch<void>(`admin/organization-units/${id}`, {
+        method: "DELETE",
+        withCredentials: true,
+      }),
+    publish: (id: string) =>
+      apiFetch<UnitDetail>(`admin/organization-units/${id}/publish`, {
+        method: "POST",
+        withCredentials: true,
+      }),
+    archive: (id: string) =>
+      apiFetch<UnitDetail>(`admin/organization-units/${id}/archive`, {
+        method: "POST",
+        withCredentials: true,
+      }),
+    reorder: (orderedIds: string[]) =>
+      apiFetch<void>("admin/organization-units/reorder", {
+        method: "PATCH",
+        body: { orderedIds },
+        withCredentials: true,
+      }),
+  };
+}
+
+// ============================== ADMIN INSTAGRAM POSTS ==============================
+
+type AdminInstagramParams = {
+  page?: number;
+  pageSize?: number;
+  placement?: "HOME" | "ABOUT" | "ARCHIVE";
+  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+};
+
+export function useAdminInstagramPosts(
+  params?: AdminInstagramParams,
+  config?: SWRConfiguration<InstagramPostListResponse>,
+) {
+  return useSWR<InstagramPostListResponse>(
+    ["admin-instagram-posts", params ?? null] as const,
+    async ([, q]) =>
+      apiFetch<InstagramPostListResponse>("admin/instagram-posts", {
+        query: q as Record<string, string | number | undefined>,
+        withCredentials: true,
+      }),
+    { ...defaults, ...config },
+  );
+}
+
+export function useAdminInstagramPost(id: string | null, config?: SWRConfiguration<InstagramPost>) {
+  return useSWR<InstagramPost>(
+    id ? ["admin-instagram-post", id] as const : null,
+    async ([, pid]) =>
+      apiFetch<InstagramPost>(`admin/instagram-posts/${pid}`, {
+        withCredentials: true,
+      }),
+    { ...defaults, ...config },
+  );
+}
+
+export function useAdminInstagramMutations() {
+  return {
+    create: (input: CreateInstagramPostInput) =>
+      apiFetch<InstagramPost>("admin/instagram-posts", {
+        method: "POST",
+        body: input,
+        withCredentials: true,
+      }),
+    update: (id: string, input: UpdateInstagramPostInput) =>
+      apiFetch<InstagramPost>(`admin/instagram-posts/${id}`, {
+        method: "PATCH",
+        body: input,
+        withCredentials: true,
+      }),
+    remove: (id: string) =>
+      apiFetch<void>(`admin/instagram-posts/${id}`, {
+        method: "DELETE",
+        withCredentials: true,
+      }),
+    toggleHighlight: (
+      id: string,
+      placement: "HOME" | "ABOUT" | "ARCHIVE",
+    ) =>
+      apiFetch<InstagramPost>(`admin/instagram-posts/${id}/highlight`, {
+        method: "PATCH",
+        body: { placement },
+        withCredentials: true,
+      }),
+    reorder: (placement: "HOME" | "ABOUT" | "ARCHIVE", orderedIds: string[]) =>
+      apiFetch<void>("admin/instagram-posts/reorder", {
+        method: "PATCH",
+        body: { placement, orderedIds },
+        withCredentials: true,
+      }),
+  };
+}
+
+// ============================== ADMIN ARTICLE CATEGORIES ==============================
+
+export function useAdminArticleCategories(
+  config?: SWRConfiguration<ArticleCategory[]>,
+) {
+  return useSWR<ArticleCategory[]>(
+    "admin-article-categories",
+    async () => {
+      const wrapped = await apiFetch<{ data: ArticleCategory[] }>(
+        "admin/article-categories",
+        { withCredentials: true },
+      );
+      return wrapped.data;
+    },
+    { ...defaults, ...config },
+  );
+}
+
+export function useAdminArticleCategoryMutations() {
+  return {
+    create: (input: CreateCategoryInput) =>
+      apiFetch<ArticleCategory>("admin/article-categories", {
+        method: "POST",
+        body: input,
+        withCredentials: true,
+      }),
+    update: (id: string, input: UpdateCategoryInput) =>
+      apiFetch<ArticleCategory>(`admin/article-categories/${id}`, {
+        method: "PUT",
+        body: input,
+        withCredentials: true,
+      }),
+    remove: (id: string) =>
+      apiFetch<void>(`admin/article-categories/${id}`, {
+        method: "DELETE",
+        withCredentials: true,
+      }),
+  };
 }

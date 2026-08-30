@@ -100,13 +100,20 @@ export async function apiFetch<T>(
   } = options;
 
   const url = buildUrl(path, query);
+
+  // Auto-inject access token from localStorage for admin/authenticated calls.
+  const storedToken = typeof window !== "undefined" ? localStorage.getItem("bemfsm_access_token") : null;
+  const hasAuth = !!(headers && Object.keys(headers).some((k) => k.toLowerCase() === "authorization"));
+  const finalHeaders: Record<string, string> = {
+    Accept: "application/json",
+    ...(body ? { "Content-Type": "application/json" } : {}),
+    ...(headers ?? {}),
+    ...(storedToken && !hasAuth ? { Authorization: `Bearer ${storedToken}` } : {}),
+  };
+
   const init: RequestInit = {
     method,
-    headers: {
-      Accept: "application/json",
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...headers,
-    },
+    headers: finalHeaders,
     credentials: withCredentials ? "include" : "same-origin",
   };
 
@@ -114,7 +121,28 @@ export async function apiFetch<T>(
     init.body = typeof body === "string" ? body : JSON.stringify(body);
   }
 
-  const res = await fetch(url, init);
+  let res = await fetch(url, init);
+
+  // Auto-refresh on 401 for non-auth endpoints, then retry once.
+  if (res.status === 401 && !path.startsWith("auth/")) {
+    try {
+      const refreshed = await apiFetch<{ accessToken: string }>("auth/refresh", {
+        method: "POST",
+        withCredentials: true,
+      });
+      if (refreshed?.accessToken) {
+        localStorage.setItem("bemfsm_access_token", refreshed.accessToken);
+        init.headers = {
+          ...init.headers,
+          Authorization: `Bearer ${refreshed.accessToken}`,
+        };
+        res = await fetch(url, init);
+      }
+    } catch {
+      // refresh failed; fall through with original 401
+    }
+  }
+
   return unwrap<T>(res);
 }
 

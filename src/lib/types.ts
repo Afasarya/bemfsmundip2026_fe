@@ -226,3 +226,150 @@ export type ApiError = {
   code?: string;
   details?: unknown;
 };
+
+// ============================================================
+// Organization units (admin CRUD)
+// ============================================================
+
+export type UnitStrategyInput = {
+  id?: string;
+  content: string;
+  sortOrder: number;
+};
+
+export type UnitProgramInput = {
+  id?: string;
+  name: string;
+  description?: string | null;
+  scheduleLabel?: string | null;
+  externalUrl?: string | null;
+  status?: UnitProgramStatus;
+  sortOrder: number;
+};
+
+export type UnitMemberInput = {
+  id?: string;
+  name: string;
+  role: string;
+  photoMediaId?: string | null;
+  photoAlt?: string | null;
+  instagramUrl?: string | null;
+  linkedinUrl?: string | null;
+  sortOrder: number;
+  isActive?: boolean;
+};
+
+export type CreateUnitInput = {
+  name: string;
+  slug: string;
+  shortName?: string;
+  type: UnitType;
+  logoMediaId?: string;
+  summary?: string;
+  description?: string;
+  status?: UnitStatus;
+  sortOrder?: number;
+  seoTitle?: string;
+  seoDesc?: string;
+  strategies?: UnitStrategyInput[];
+  programs?: UnitProgramInput[];
+  members?: UnitMemberInput[];
+};
+
+export type UpdateUnitInput = Partial<CreateUnitInput>;
+
+export type UnitListResponse = {
+  data: UnitListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+// ============================================================
+// Instagram posts (admin CRUD)
+// ============================================================
+
+export type InstagramPlacementType = "HOME" | "ABOUT" | "ARCHIVE";
+export type InstagramPostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+export type InstagramContentType = "POST" | "REEL" | "CAROUSEL";
+
+export type InstagramPlacement = {
+  id: string;
+  placement: InstagramPlacementType;
+  isHighlighted: boolean;
+  sortOrder: number;
+};
+
+export type InstagramPostListItem = {
+  id: string;
+  canonicalUrl: string;
+  shortcode: string;
+  internalTitle: string | null;
+  contentType: InstagramContentType;
+  status: InstagramPostStatus;
+  placements: InstagramPlacement[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InstagramPost = InstagramPostListItem & {
+  internalNote: string | null;
+};
+
+export type InstagramPostListResponse = {
+  data: InstagramPostListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type CreateInstagramPostInput = {
+  title: string;
+  canonicalUrl: string;
+  status?: InstagramPostStatus;
+};
+
+export type UpdateInstagramPostInput = Partial<CreateInstagramPostInput> & {
+  internalNote?: string;
+};
+
+// ============================================================
+// Article categories (admin CRUD)
+// ============================================================
+
+export type CreateCategoryInput = {
+  name: string;
+  slug: string;
+  description?: string;
+  sortOrder?: number;
+};
+
+export type UpdateCategoryInput = Partial<CreateCategoryInput>;
+
+// ============================================================
+// Auth
+// ============================================================
+
+export type UserRoleCode =
+  | "SUPER_ADMIN"
+  | "EDITOR"
+  | "ADMIN_BIDANG";
+
+export type UserStatus = "ACTIVE" | "PENDING_INVITATION" | "SUSPENDED";
+
+export type AuthUser = {
+  id: ID;
+  email: string;
+  name: string;
+  roleCode: UserRoleCode;
+};
+
+export type LoginResponse = AuthUser & {
+  accessToken: string;
+};
+
+export type MeResponse = AuthUser & {
+  status: UserStatus;
+  permissions: string[];
+  unitScopes: { unitId: ID; role: string }[];
+};

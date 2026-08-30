@@ -2,34 +2,41 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import useSWR from "swr";
 import { useMemo, useState } from "react";
 import {
   ArrowRight, Bell, BookOpen, Building2, Check,
-  ChevronDown, CircleUserRound, Eye, FileText, Flame, GripVertical,
-  Instagram, LayoutDashboard, Link2, LogOut, Menu, MoreHorizontal, Pencil,
-  Search, Settings, Sparkles, Users, X,
+  ChevronDown, CircleUserRound, Eye, FileText, Instagram,
+  LayoutDashboard, Link2, LogOut, Menu, Pencil,
+  Plus, Search, Settings, Sparkles, Trash2, Users, X,
 } from "lucide-react";
 import {
+  useAdminArticleCategories,
+  useAdminArticleCategoryMutations,
   useAdminArticles,
   useAdminDashboard,
-  usePublicUnits,
+  useAdminInstagramPosts,
+  useAdminInstagramMutations,
+  useAdminUnits,
+  useAdminUnitMutations,
 } from "@/lib/hooks";
-import { apiFetch } from "@/lib/api";
-import {
-  placeholderCover, placeholderLogo,
-} from "@/lib/placeholder";
+import { placeholderCover, placeholderLogo } from "@/lib/placeholder";
 import { formatDateShort, formatTimeAgo } from "@/lib/format";
 import {
   type Article,
-  type InstagramProfileData,
+  type InstagramPostListItem,
+  type InstagramPostStatus,
   type UnitListItem,
   UNIT_TYPE_LABELS,
 } from "@/lib/types";
+import { useAuth } from "@/components/providers/AuthProvider";
+import LoginForm from "./LoginForm";
 import ArticleEditor from "./ArticleEditor";
+import UnitDrawer from "./UnitDrawer";
+import InstagramDrawer from "./InstagramDrawer";
+import CategoryDrawer from "./CategoryDrawer";
 
-type Module = "overview" | "instagram" | "units" | "news";
-type DrawerKind = "instagram" | "unit" | "news" | null;
+type Module = "overview" | "instagram" | "units" | "news" | "categories";
+type DrawerKind = "instagram" | "unit" | "news" | "category" | null;
 
 type NavItem = { id: Module; label: string; icon: typeof LayoutDashboard };
 const nav: NavItem[] = [
@@ -37,6 +44,7 @@ const nav: NavItem[] = [
   { id: "instagram", label: "Instagram", icon: Instagram },
   { id: "units", label: "Biro, Bidang & Tim", icon: Building2 },
   { id: "news", label: "Informasi", icon: FileText },
+  { id: "categories", label: "Kategori", icon: BookOpen },
 ];
 
 const moduleCopy: Record<Module, { eyebrow: string; title: string; description: string }> = {
@@ -44,6 +52,7 @@ const moduleCopy: Record<Module, { eyebrow: string; title: string; description: 
   instagram: { eyebrow: "Kanal sosial", title: "Konten Instagram", description: "Kelola tautan post dan susunan konten pilihan pada situs." },
   units: { eyebrow: "Struktur kabinet", title: "Biro, Bidang & Tim", description: "Kelola profil, arah strategis, program kerja, dan fungsionaris." },
   news: { eyebrow: "Ruang redaksi", title: "Informasi & Berita", description: "Tulis, kategorikan, jadwalkan, dan pilih berita utama." },
+  categories: { eyebrow: "Taksonomi", title: "Kategori Informasi", description: "Kelompokkan berita dan informasi untuk navigasi yang lebih baik." },
 };
 
 function StatusPill({ children, tone = "green" }: { children: React.ReactNode; tone?: "green" | "amber" | "muted" | "orange" | "sky" }) {
@@ -105,6 +114,25 @@ function formatBytes(bytes: number): string {
 }
 
 export default function AdminDashboard() {
+  const { user, loading: authLoading } = useAuth();
+
+  // Auth gate: splash while hydrating, login form if not authenticated.
+  if (authLoading) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-bara-bg-dark">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-400/30 border-t-orange-400" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginForm />;
+  }
+
+  return <AdminDashboardInner />;
+}
+
+function AdminDashboardInner() {
   const [module, setModule] = useState<Module>("overview");
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -128,17 +156,6 @@ export default function AdminDashboard() {
     setSearch("");
   };
 
-  const { data: units = [], isLoading: unitsLoading } = usePublicUnits();
-  const filteredUnits = useMemo(
-    () =>
-      units.filter((unit) =>
-        `${unit.name} ${unit.type} ${unit.shortName ?? ""}`
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      ),
-    [units, search],
-  );
-
   return (
     <div className="admin-root min-h-screen bg-[#0d0908] text-white">
       <Sidebar nav={nav} module={module} go={go} mobileNav={mobileNav} setMobileNav={setMobileNav} />
@@ -147,17 +164,27 @@ export default function AdminDashboard() {
         <main className="mx-auto max-w-[1500px] px-5 pb-20 pt-9 md:px-8 lg:px-10">
           <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
           {module === "overview" && <Overview onNavigate={go} />}
-          {module === "instagram" && <InstagramModule onEdit={(n) => openDrawer("instagram", n)} />}
+          {module === "instagram" && (
+            <InstagramModule
+              onEdit={(n) => openDrawer("instagram", n)}
+              onCreate={() => openDrawer("instagram", null)}
+            />
+          )}
           {module === "units" && (
             <UnitsModule
-              units={filteredUnits}
-              loading={unitsLoading}
               search={search}
               setSearch={setSearch}
               onEdit={(n) => openDrawer("unit", n)}
+              onCreate={() => openDrawer("unit", null)}
             />
           )}
-          {module === "news" && <NewsModule search={search} setSearch={setSearch} onEdit={(n) => openDrawer("news", n)} />}
+          {module === "news" && <NewsModule search={search} setSearch={setSearch} onEdit={(n) => openDrawer("news", n)} onCreate={() => openDrawer("news", null)} />}
+          {module === "categories" && (
+            <CategoriesModule
+              onEdit={(n) => openDrawer("category", n)}
+              onCreate={() => openDrawer("category", null)}
+            />
+          )}
         </main>
       </div>
 
@@ -193,6 +220,7 @@ function Sidebar({
   mobileNav: boolean;
   setMobileNav: (v: boolean) => void;
 }) {
+  const { user, logout } = useAuth();
   return (
     <aside
       className={`fixed inset-y-0 left-0 z-[130] flex w-[268px] flex-col border-r border-white/[0.07] bg-[#100b09] transition-transform lg:translate-x-0 ${
@@ -246,12 +274,22 @@ function Sidebar({
       </nav>
       <div className="border-t border-white/[0.06] p-4">
         <div className="flex items-center gap-3 rounded-xl bg-white/[0.025] p-3">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-bara-orange to-bara-red text-xs font-bold">AF</div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold">Admin</p>
-            <p className="truncate text-[10px] text-white/30">admin@bemfsmundip.com</p>
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-bara-orange to-bara-red text-xs font-bold">
+            {user.name?.slice(0, 2).toUpperCase() ?? "AD"}
           </div>
-          <LogOut className="h-4 w-4 text-white/25" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold">{user.name}</p>
+            <p className="truncate text-[10px] text-white/30">{user.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            title="Keluar"
+            aria-label="Keluar"
+            className="grid h-7 w-7 place-items-center rounded-md hover:bg-white/[0.06]"
+          >
+            <LogOut className="h-4 w-4 text-white/25" />
+          </button>
         </div>
       </div>
     </aside>
@@ -461,73 +499,116 @@ function OverviewSkeleton() {
 
 // ============================ INSTAGRAM ============================
 
-function InstagramModule({ onEdit }: { onEdit: (v: string) => void }) {
-  const { data: profile, isLoading, mutate } = useSWR<InstagramProfileData | null>(
-    "admin-instagram",
-    () => apiFetch<InstagramProfileData | null>("admin/instagram", { withCredentials: true }),
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
-  );
+const STATUS_LABELS: Record<InstagramPostStatus | "DRAFT" | "PUBLISHED" | "ARCHIVED", string> = {
+  DRAFT: "Draf",
+  PUBLISHED: "Tayang",
+  ARCHIVED: "Arsip",
+};
+
+function InstagramModule({
+  onEdit,
+  onCreate,
+}: {
+  onEdit: (id: string) => void;
+  onCreate: () => void;
+}) {
+  const { data, isLoading, mutate } = useAdminInstagramPosts({ pageSize: 50 });
+  const posts: InstagramPostListItem[] = data?.data ?? [];
+  const mutations = useAdminInstagramMutations();
+
+  const handleDelete = async (post: InstagramPostListItem) => {
+    if (!confirm(`Hapus post "${post.internalTitle ?? post.shortcode}"?`)) return;
+    try {
+      await mutations.remove(post.id);
+      await mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal menghapus post.");
+    }
+  };
 
   return (
-    <section className="admin-panel p-6">
-      <SectionHeader
-        title="Profil Instagram"
-        caption="Hubungkan post dan pilih lokasi tampil"
-        action={profile ? "Edit profil" : "Tambah profil"}
-        onAction={() => onEdit("Profil Instagram")}
+    <section className="admin-panel overflow-hidden">
+      <Toolbar
+        search=""
+        setSearch={() => {}}
+        placeholder="Cari judul post..."
+        filter="Semua status"
+        actionLabel="Tambah post"
+        onAction={onCreate}
       />
       {isLoading ? (
-        <div className="h-48 animate-pulse rounded-2xl bg-white/[0.015]" />
-      ) : profile ? (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.015] p-5">
-          <div className="flex items-start gap-5">
-            <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/10">
-              {profile.profileMedia?.url ? (
-                <Image src={profile.profileMedia.url} alt="" fill sizes="64px" className="object-cover" />
-              ) : profile.profilePictureUrl ? (
-                <Image src={profile.profilePictureUrl} alt="" fill sizes="64px" className="object-cover" />
-              ) : (
-                <Image src={placeholderLogo(profile.handle ?? "ig", 64)} alt="" fill sizes="64px" className="object-cover" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-xl">@{profile.handle}</p>
-              <p className="mt-1 text-xs text-white/45">{profile.bio ?? "Belum ada bio."}</p>
-              <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-white/40">
-                <span><strong className="text-white/80">{profile.followerCount ?? 0}</strong> pengikut</span>
-                <span><strong className="text-white/80">{profile.followingCount ?? 0}</strong> mengikuti</span>
-                <span><strong className="text-white/80">{profile.postCount ?? 0}</strong> kiriman</span>
-              </div>
-              {profile.latestPostUrl && (
-                <div className="mt-4 rounded-xl border border-white/[0.06] p-3 text-[11px]">
-                  <p className="font-semibold text-white/70">Postingan terbaru</p>
-                  <a
-                    href={profile.latestPostUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center gap-1 text-bara-orange hover:underline"
-                  >
-                    <Link2 className="h-3 w-3" />
-                    {profile.latestPostUrl.replace(/^https?:\/\/(www\.)?instagram\.com\//, "")}
-                  </a>
-                  {profile.latestPostCaption && (
-                    <p className="mt-2 line-clamp-2 text-white/50">{profile.latestPostCaption}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end">
-            <button onClick={() => mutate()} className="admin-secondary-button">
-              Segarkan
-            </button>
-          </div>
+        <div className="space-y-3 p-5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-14 animate-pulse rounded-xl bg-white/[0.025]" />
+          ))}
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="px-6 py-16 text-center">
+          <p className="text-xs text-white/40">Belum ada post Instagram.</p>
+          <button onClick={onCreate} className="admin-primary-button mt-4 inline-flex">
+            <Plus className="h-4 w-4" />Tambah post pertama
+          </button>
         </div>
       ) : (
-        <p className="rounded-2xl border border-dashed border-white/10 bg-white/[0.015] p-8 text-center text-xs text-white/40">
-          Belum ada profil Instagram. Tambahkan untuk menampilkan kabar terbaru di beranda.
-        </p>
+        <div className="overflow-x-auto">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Post</th>
+                <th>Status</th>
+                <th>Tanggal</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {posts.map((post) => (
+                <tr key={post.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-fuchsia-500/30 to-orange-400/20 text-fuchsia-200">
+                        <Instagram className="h-4 w-4" />
+                      </span>
+                      <div className="max-w-md">
+                        <p className="line-clamp-1 font-medium text-white/75">
+                          {post.internalTitle ?? `Post ${post.shortcode}`}
+                        </p>
+                        <a
+                          href={post.canonicalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-flex items-center gap-1 text-[10px] text-white/30 hover:text-bara-orange"
+                        >
+                          <Link2 className="h-3 w-3" />
+                          {post.shortcode}
+                        </a>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <StatusPill tone={post.status === "PUBLISHED" ? "green" : post.status === "DRAFT" ? "muted" : "amber"}>
+                      {STATUS_LABELS[post.status]}
+                    </StatusPill>
+                  </td>
+                  <td>{formatDateShort(post.createdAt)}</td>
+                  <td>
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => onEdit(post.id)} className="admin-icon-button">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => handleDelete(post)} className="admin-icon-button hover:!border-red-400/30 hover:!text-red-300">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+      <div className="admin-table-footer">
+        {posts.length > 0 ? `${posts.length} post termuat` : "Belum ada post"}
+      </div>
     </section>
   );
 }
@@ -535,42 +616,104 @@ function InstagramModule({ onEdit }: { onEdit: (v: string) => void }) {
 // ============================ UNITS ============================
 
 function UnitsModule({
-  units,
-  loading,
   search,
   setSearch,
   onEdit,
+  onCreate,
 }: {
-  units: UnitListItem[];
-  loading: boolean;
   search: string;
   setSearch: (v: string) => void;
-  onEdit: (v: string) => void;
+  onEdit: (id: string) => void;
+  onCreate: () => void;
 }) {
+  const { data, isLoading, mutate } = useAdminUnits({ pageSize: 100 });
+  const units = data?.data ?? [];
+  const mutations = useAdminUnitMutations();
+  const filtered = useMemo(
+    () =>
+      units.filter((unit) =>
+        `${unit.name} ${unit.type} ${unit.shortName ?? ""}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      ),
+    [units, search],
+  );
+
+  const handleDelete = async (unit: UnitListItem) => {
+    if (!confirm(`Hapus unit "${unit.name}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+    try {
+      await mutations.remove(unit.id);
+      await mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal menghapus unit.");
+    }
+  };
+
+  const handlePublishToggle = async (unit: UnitListItem) => {
+    try {
+      if (unit.status === "PUBLISHED") {
+        await mutations.archive(unit.id);
+      } else {
+        await mutations.publish(unit.id);
+      }
+      await mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal mengubah status.");
+    }
+  };
+
   return (
     <section className="admin-panel overflow-hidden">
-      <Toolbar search={search} setSearch={setSearch} placeholder="Cari biro, bidang, atau tim..." filter="Semua jenis" />
-      {loading ? (
+      <Toolbar
+        search={search}
+        setSearch={setSearch}
+        placeholder="Cari biro, bidang, atau tim..."
+        filter="Semua jenis"
+        actionLabel="Tambah unit"
+        onAction={onCreate}
+      />
+      {isLoading ? (
         <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-48 animate-pulse bg-[#12100e]" />
           ))}
         </div>
-      ) : units.length === 0 ? (
-        <p className="px-6 py-12 text-center text-xs text-white/40">Tidak ada unit yang cocok dengan pencarian.</p>
+      ) : filtered.length === 0 ? (
+        <div className="px-6 py-16 text-center">
+          <p className="text-xs text-white/40">Tidak ada unit yang cocok dengan pencarian.</p>
+          <button onClick={onCreate} className="admin-primary-button mt-4 inline-flex">
+            <Plus className="h-4 w-4" />Tambah unit pertama
+          </button>
+        </div>
       ) : (
         <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 xl:grid-cols-3">
-          {units.map((unit) => (
-            <UnitCard key={unit.id} unit={unit} onEdit={onEdit} />
+          {filtered.map((unit) => (
+            <UnitCard
+              key={unit.id}
+              unit={unit}
+              onEdit={() => onEdit(unit.id)}
+              onDelete={() => handleDelete(unit)}
+              onPublishToggle={() => handlePublishToggle(unit)}
+            />
           ))}
         </div>
       )}
-      <div className="admin-table-footer">{units.length} unit kabinet ditemukan</div>
+      <div className="admin-table-footer">{filtered.length} unit kabinet ditemukan</div>
     </section>
   );
 }
 
-function UnitCard({ unit, onEdit }: { unit: UnitListItem; onEdit: (v: string) => void }) {
+function UnitCard({
+  unit,
+  onEdit,
+  onDelete,
+  onPublishToggle,
+}: {
+  unit: UnitListItem;
+  onEdit: () => void;
+  onDelete: () => void;
+  onPublishToggle: () => void;
+}) {
   return (
     <article className="group bg-[#12100e] p-5 transition hover:bg-[#17120f]">
       <div className="flex items-start gap-4">
@@ -586,9 +729,9 @@ function UnitCard({ unit, onEdit }: { unit: UnitListItem; onEdit: (v: string) =>
             <StatusPill tone={unit.type === "DIVISION" ? "orange" : unit.type === "BUREAU" ? "amber" : "sky"}>
               {UNIT_TYPE_LABELS[unit.type]}
             </StatusPill>
-            <button className="text-white/20">
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
+            <StatusPill tone={unit.status === "PUBLISHED" ? "green" : unit.status === "DRAFT" ? "muted" : "amber"}>
+              {unit.status === "PUBLISHED" ? "Tayang" : unit.status === "DRAFT" ? "Draf" : "Arsip"}
+            </StatusPill>
           </div>
           <h3 className="mt-3 truncate text-sm font-semibold text-white/80">{unit.shortName ?? "—"}</h3>
           <p className="mt-1 truncate text-[10px] text-white/32">{unit.name}</p>
@@ -597,12 +740,19 @@ function UnitCard({ unit, onEdit }: { unit: UnitListItem; onEdit: (v: string) =>
       {unit.summary && (
         <p className="mt-5 line-clamp-2 min-h-[40px] text-xs leading-5 text-white/38">{unit.summary}</p>
       )}
-      <button
-        onClick={() => onEdit(unit.name)}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.07] py-2.5 text-[11px] text-white/45 transition hover:border-orange-400/20 hover:text-orange-200"
-      >
-        <Pencil className="h-3 w-3" />Kelola profil unit
-      </button>
+      <div className="mt-4 grid grid-cols-3 gap-1">
+        <button onClick={onEdit} className="admin-secondary-button justify-center">
+          <Pencil className="h-3 w-3" />
+          Edit
+        </button>
+        <button onClick={onPublishToggle} className="admin-secondary-button justify-center">
+          {unit.status === "PUBLISHED" ? "Arsipkan" : "Tayang"}
+        </button>
+        <button onClick={onDelete} className="admin-secondary-button justify-center hover:!border-red-400/30 hover:!text-red-300">
+          <Trash2 className="h-3 w-3" />
+          Hapus
+        </button>
+      </div>
     </article>
   );
 }
@@ -613,10 +763,12 @@ function NewsModule({
   search,
   setSearch,
   onEdit,
+  onCreate,
 }: {
   search: string;
   setSearch: (v: string) => void;
   onEdit: (id: string) => void;
+  onCreate: () => void;
 }) {
   const { data, isLoading } = useAdminArticles({ pageSize: 50 });
   const articles: Article[] = data?.data ?? [];
@@ -626,7 +778,14 @@ function NewsModule({
 
   return (
     <section className="admin-panel overflow-hidden">
-      <Toolbar search={search} setSearch={setSearch} placeholder="Cari judul informasi..." filter="Semua kategori" />
+      <Toolbar
+        search={search}
+        setSearch={setSearch}
+        placeholder="Cari judul informasi..."
+        filter="Semua kategori"
+        actionLabel="Tulis informasi"
+        onAction={onCreate}
+      />
       {isLoading ? (
         <div className="space-y-3 p-5">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -634,7 +793,12 @@ function NewsModule({
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <p className="px-6 py-12 text-center text-xs text-white/40">Tidak ada informasi yang cocok.</p>
+        <div className="px-6 py-16 text-center">
+          <p className="text-xs text-white/40">Tidak ada informasi yang cocok.</p>
+          <button onClick={onCreate} className="admin-primary-button mt-4 inline-flex">
+            <Plus className="h-4 w-4" />Tulis informasi pertama
+          </button>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="admin-table">
@@ -682,25 +846,145 @@ function NewsModule({
         </div>
       )}
       <div className="admin-table-footer">
-        {articles.length > 0 ? `${articles.length} informasi termuat` : "Data UI sementara"}
+        {articles.length > 0 ? `${articles.length} informasi termuat` : "Belum ada informasi"}
       </div>
+    </section>
+  );
+}
+
+// ============================ CATEGORIES ============================
+
+function CategoriesModule({
+  onEdit,
+  onCreate,
+}: {
+  onEdit: (id: string) => void;
+  onCreate: () => void;
+}) {
+  const { data: categories = [], isLoading, mutate } = useAdminArticleCategories();
+  const mutations = useAdminArticleCategoryMutations();
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Hapus kategori "${name}"?`)) return;
+    try {
+      await mutations.remove(id);
+      await mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal menghapus kategori.");
+    }
+  };
+
+  return (
+    <section className="admin-panel overflow-hidden">
+      <Toolbar
+        search=""
+        setSearch={() => {}}
+        placeholder=""
+        filter="Semua kategori"
+        actionLabel="Tambah kategori"
+        onAction={onCreate}
+      />
+      {isLoading ? (
+        <div className="space-y-3 p-5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-14 animate-pulse rounded-xl bg-white/[0.025]" />
+          ))}
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="px-6 py-16 text-center">
+          <p className="text-xs text-white/40">Belum ada kategori.</p>
+          <button onClick={onCreate} className="admin-primary-button mt-4 inline-flex">
+            <Plus className="h-4 w-4" />Tambah kategori pertama
+          </button>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Kategori</th>
+                <th>Slug</th>
+                <th>Urutan</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <p className="font-medium text-white/75">{c.name}</p>
+                    {c.description && (
+                      <p className="mt-1 line-clamp-1 text-[10px] text-white/30">{c.description}</p>
+                    )}
+                  </td>
+                  <td>
+                    <code className="rounded bg-white/5 px-2 py-1 text-[10px] text-white/55">
+                      {c.slug}
+                    </code>
+                  </td>
+                  <td className="text-[11px] text-white/55">{c.sortOrder}</td>
+                  <td>
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => onEdit(c.id)} className="admin-icon-button">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c.id, c.name)}
+                        className="admin-icon-button hover:!border-red-400/30 hover:!text-red-300"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="admin-table-footer">{categories.length} kategori terdaftar</div>
     </section>
   );
 }
 
 // ============================ DRAWER ============================
 
-function Toolbar({ search, setSearch, placeholder, filter = "Semua status" }: { search: string; setSearch: (v: string) => void; placeholder: string; filter?: string }) {
+function Toolbar({
+  search,
+  setSearch,
+  placeholder,
+  filter = "Semua status",
+  actionLabel,
+  onAction,
+}: {
+  search: string;
+  setSearch: (v: string) => void;
+  placeholder: string;
+  filter?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
   return (
     <div className="flex flex-col gap-3 border-b border-white/[0.06] p-4 sm:flex-row">
       <label className="relative flex-1">
         <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/25" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={placeholder} className="admin-input pl-10" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={placeholder}
+          className="admin-input pl-10"
+        />
       </label>
       <button className="admin-filter-button">
         {filter}
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
+      {actionLabel && onAction && (
+        <button onClick={onAction} className="admin-primary-button justify-center">
+          <Plus className="h-4 w-4" />
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -728,56 +1012,20 @@ function EditorDrawer({
       />
     );
   }
-  const labels = {
-    instagram: ["Konten Instagram", "Hubungkan post dan pilih lokasi tampil."],
-    unit: ["Profil Unit", "Kelola seluruh isi halaman detail unit."],
-  } as const;
-  return (
-    <div className="fixed inset-0 z-[180] bg-black/65 backdrop-blur-sm" onMouseDown={onClose}>
-      <aside
-        className="absolute inset-y-0 right-0 w-full max-w-[620px] overflow-y-auto border-l border-white/[0.08] bg-[#12100e] shadow-2xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-white/[0.07] bg-[#12100e]/95 px-6 py-5 backdrop-blur-xl">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-bara-orange">{editing ? "Edit" : "Tambah baru"}</p>
-            <h2 className="mt-2 font-display text-2xl">{labels[kind][0]}</h2>
-            <p className="mt-1 text-xs text-white/35">{labels[kind][1]}</p>
-          </div>
-          <button onClick={onClose} className="admin-icon-button">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="p-6 space-y-6">
-          <ComingSoonNotice />
-        </div>
-        <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-white/[0.07] bg-[#12100e]/95 px-6 py-4 backdrop-blur-xl">
-          <p className="hidden text-[10px] text-white/25 sm:block">Periksa kembali sebelum menyimpan.</p>
-          <div className="ml-auto flex gap-2">
-            <button onClick={onClose} className="admin-secondary-button">Batal</button>
-            <button onClick={onSaved} className="admin-primary-button">
-              <Check className="h-4 w-4" />Simpan
-            </button>
-          </div>
-        </div>
-      </aside>
-    </div>
-  );
-}
-
-function ComingSoonNotice() {
-  return (
-    <div className="rounded-xl border border-orange-400/15 bg-orange-400/[0.04] p-4">
-      <div className="flex gap-3">
-        <Flame className="mt-0.5 h-4 w-4 text-orange-300" />
-        <div>
-          <p className="text-[11px] font-semibold text-white/70">Editor spesifik segera hadir.</p>
-          <p className="mt-1 text-[10px] leading-5 text-white/40">
-            Form lengkap dengan editor kaya, unggah media, dan pratinjau langsung akan tersedia dalam rilis berikutnya.
-            Untuk saat ini, gunakan endpoint REST di dasbor admin atau API langsung.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+  if (kind === "unit") {
+    return (
+      <UnitDrawer unitId={editing} onClose={onClose} onSaved={onSaved} notify={notify} />
+    );
+  }
+  if (kind === "instagram") {
+    return (
+      <InstagramDrawer postId={editing} onClose={onClose} onSaved={onSaved} notify={notify} />
+    );
+  }
+  if (kind === "category") {
+    return (
+      <CategoryDrawer categoryId={editing} onClose={onClose} onSaved={onSaved} notify={notify} />
+    );
+  }
+  return null;
 }
