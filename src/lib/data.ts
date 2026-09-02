@@ -22,15 +22,17 @@ export const DATABASE_CARDS = [
     badge: "Aktif",
     items: ["Formulir Aspirasi", "Survei Bulanan", "Laporan Transparan"],
     size: "lg",
+    href: "https://tally.so/r/wkr6PR?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAb21jcAUB7KVwZG9mAmV4dG4DYWVtAjExAHNydGMGYXBwX2lkDzU2NzA2NzM0MzM1MjQyNwABpyMA9HlWlxSSjS8BribS1vfqILV6J6AWcDjSoPn1RlH6Aq2jAZLc0zMdvdu6_aem_M_RsUKqps6MTFp9ZzROqSg",
   },
   {
-    title: "Info Lomba",
+    title: "Form Konseling",
     description:
-      "Kurasi kompetisi nasional & internasional bidang sains, teknologi, dan inovasi.",
-    icon: "Trophy",
-    badge: "12 Baru",
-    items: ["Nasional", "Internasional"],
+      "Layanan konseling untuk mendukung kesejahteraan mahasiswa FSM UNDIP.",
+    icon: "MessageSquareHeart",
+    badge: "Layanan",
+    items: ["Konseling", "Pendampingan"],
     size: "md",
+    href: "https://docs.google.com/forms/d/e/1FAIpQLSfUDlxLilXTkOqSBZqd2nNtkgbcIX4WKOk-HIF9rfsr34P6dA/viewform?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAcGRvZgJleHRuA2FlbQIxMQBzcnRjBmFwcF9pZA81NjcwNjczNDMzNTI0MjcAAadkxOdebzJzWDQlbCevocu354yq-jnzuf3rp5HgeJe7S0wMpCCy7-WKjTWzsA_aem_AiQsNxxusSFFlhoOiq6rYA",
   },
   {
     title: "Info Magang",
@@ -40,6 +42,7 @@ export const DATABASE_CARDS = [
     badge: "8 Lowongan",
     items: ["Startup", "Industri", "R&D"],
     size: "md",
+    href: "https://drive.google.com/file/d/1srIlubs9AhpWbtlNJeXq6IH2KT_hDLSs/view",
   },
   {
     title: "Info Beasiswa",
@@ -48,6 +51,7 @@ export const DATABASE_CARDS = [
     badge: "Update",
     items: ["Dalam Negeri", "Luar Negeri"],
     size: "sm",
+    href: "https://drive.google.com/file/d/1wBEY_KmmvXWaf6OppKkeHju0dRKM3HmY/view",
   },
   {
     title: "Database Sponsorship",
@@ -56,6 +60,7 @@ export const DATABASE_CARDS = [
     badge: "Database",
     items: ["25+ Mitra", "Template Proposal"],
     size: "sm",
+    href: "https://drive.google.com/file/d/1XuctTLZS95mBN--Jh-mZR400S2TVL6ab/view",
   },
   {
     title: "Kalender Akademik",
@@ -64,6 +69,7 @@ export const DATABASE_CARDS = [
     badge: "2026",
     items: ["Semester Genap", "Ujian", "Liburan"],
     size: "sm",
+    href: "https://drive.google.com/file/d/1fJmBzXaO7rEP_uAgiYOxiJFkDcTewmju/view",
   },
 ];
 

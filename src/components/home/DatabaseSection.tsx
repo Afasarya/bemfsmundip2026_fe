@@ -28,6 +28,8 @@ export default function DatabaseSection() {
                 >
                   <Link
                     href={card.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="group relative block h-full overflow-hidden rounded-3xl glass-panel p-7 transition-all duration-300 hover:border-bara-orange/50 hover:shadow-ember-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bara-gold-lt"
                   >
                     {/* hover glow */}

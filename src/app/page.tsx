@@ -218,7 +218,9 @@ export default function Home() {
                     </div>
 
                     <Link
-                      href="/informasi"
+                      href={card.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="mt-5 inline-flex items-center gap-1.5 text-sm text-white/40 group-hover:text-bara-orange transition-colors"
                     >
                       Pelajari lebih lanjut
