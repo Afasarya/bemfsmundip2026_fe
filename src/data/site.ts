@@ -14,8 +14,8 @@ export const SITE = {
     "Website resmi Badan Eksekutif Mahasiswa Fakultas Sains dan Matematika Universitas Diponegoro 2026, Kabinet Bara Momentum.",
   instagram: "@bemfsm_undip",
   instagramUrl: "https://instagram.com/bemfsm_undip",
-  website: "bemfsmundip.co.id",
-  websiteUrl: "https://bemfsmundip.co.id",
+  website: "bemfsmundip.com",
+  websiteUrl: "https://bemfsmundip.com",
   email: "bemfsm@undip.ac.id",
   youtube: "https://www.youtube.com/@bemfsmundip",
 };
