@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ImageIcon, Loader2, Upload, X } from "lucide-react";
+import { useSWRConfig } from "swr";
 import { apiFetch, CDN_BASE_URL, API_BASE_URL } from "@/lib/api";
 
 type MediaItem = {
@@ -44,6 +45,15 @@ export default function MediaPicker({
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryLoading, setGalleryLoading] = useState(false);
   const [current, setCurrent] = useState<MediaItem | null>(null);
+  const { mutate } = useSWRConfig();
+
+  // Invalidate the admin dashboard count + media list after any media mutation.
+  const invalidateMediaCaches = () => {
+    const matchesKey = (namespace: string) => (key: unknown) =>
+      (typeof key === "string" && key === namespace) ||
+      (Array.isArray(key) && key[0] === namespace);
+    mutate(matchesKey("admin-dashboard"), undefined, { revalidate: true });
+  };
 
   useEffect(() => {
     if (!value) {
@@ -90,6 +100,7 @@ export default function MediaPicker({
       });
       setCurrent(created);
       onChange(created.id, created.url);
+      invalidateMediaCaches();
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Upload gagal.";

@@ -241,6 +241,18 @@ html {
     @apply h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.025] px-3.5 text-xs text-white/70 outline-none transition placeholder:text-white/20 focus:border-orange-400/30 focus:bg-orange-400/[0.025] focus:ring-2 focus:ring-orange-400/[0.05];
   }
 
+  .admin-search {
+    @apply h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.025] px-3.5 text-xs text-white/70 outline-none transition placeholder:text-white/20 focus:border-orange-400/30 focus:bg-orange-400/[0.025] focus:ring-2 focus:ring-orange-400/[0.05];
+  }
+
+  .admin-chip {
+    @apply inline-flex h-8 items-center rounded-full border border-white/[0.08] bg-white/[0.02] px-3 text-[11px] font-medium text-white/45 transition hover:border-white/[0.16] hover:bg-white/[0.04] hover:text-white/70;
+  }
+
+  .admin-chip-active {
+    @apply border-bara-orange/40 bg-bara-orange/10 text-white;
+  }
+
   .admin-table {
     @apply w-full min-w-[760px] border-collapse text-left text-xs;
   }

@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import useSWR from "swr";
 import {
   ArrowRight, Bell, BookOpen, Building2, Check,
-  ChevronDown, CircleUserRound, Eye, FileText, Instagram,
+  ChevronDown, CircleUserRound, Eye, FileText, ImageIcon, Instagram,
   LayoutDashboard, Link2, LogOut, Menu, Pencil,
   Plus, Search, Settings, Sparkles, Trash2, Users, X,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import {
   useAdminUnitMutations,
 } from "@/lib/hooks";
 import { placeholderCover, placeholderLogo } from "@/lib/placeholder";
+import { apiFetch } from "@/lib/api";
 import { formatDateShort, formatTimeAgo } from "@/lib/format";
 import {
   type Article,
@@ -36,7 +38,7 @@ import UnitDrawer from "./UnitDrawer";
 import InstagramDrawer from "./InstagramDrawer";
 import CategoryDrawer from "./CategoryDrawer";
 
-type Module = "overview" | "instagram" | "units" | "news" | "categories";
+type Module = "overview" | "instagram" | "units" | "news" | "categories" | "media";
 type DrawerKind = "instagram" | "unit" | "news" | "category" | null;
 
 type NavItem = { id: Module; label: string; icon: typeof LayoutDashboard };
@@ -46,6 +48,7 @@ const nav: NavItem[] = [
   { id: "units", label: "Biro, Bidang & Tim", icon: Building2 },
   { id: "news", label: "Informasi", icon: FileText },
   { id: "categories", label: "Kategori", icon: BookOpen },
+  { id: "media", label: "Media", icon: ImageIcon },
 ];
 
 const moduleCopy: Record<Module, { eyebrow: string; title: string; description: string }> = {
@@ -54,6 +57,7 @@ const moduleCopy: Record<Module, { eyebrow: string; title: string; description: 
   units: { eyebrow: "Struktur kabinet", title: "Biro, Bidang & Tim", description: "Kelola profil, arah strategis, program kerja, dan fungsionaris." },
   news: { eyebrow: "Ruang redaksi", title: "Informasi & Berita", description: "Tulis, kategorikan, jadwalkan, dan pilih berita utama." },
   categories: { eyebrow: "Taksonomi", title: "Kategori Informasi", description: "Kelompokkan berita dan informasi untuk navigasi yang lebih baik." },
+  media: { eyebrow: "Penyimpanan", title: "Pustaka Media", description: "Kelola unggahan, lihat pemakaian, dan bersihkan file yang tidak terpakai." },
 };
 
 function StatusPill({ children, tone = "green" }: { children: React.ReactNode; tone?: "green" | "amber" | "muted" | "orange" | "sky" }) {
@@ -186,6 +190,7 @@ function AdminDashboardInner() {
               onCreate={() => openDrawer("category", null)}
             />
           )}
+          {module === "media" && <MediaModule notify={notify} />}
         </main>
       </div>
 
@@ -817,7 +822,7 @@ function NewsModule({
                   <td>
                     <div className="flex items-center gap-3">
                       <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-white/5">
-                        <Image src={placeholderCover(article.title, 200, 150)} alt="" fill className="object-cover opacity-75" />
+                        <Image src={article.coverUrl ?? placeholderCover(article.title, 200, 150)} alt="" fill className="object-cover opacity-75" unoptimized={!article.coverUrl} />
                       </div>
                       <div className="max-w-md">
                         <p className="line-clamp-1 font-medium text-white/75">{article.title}</p>
@@ -1066,4 +1071,271 @@ function EditorDrawer({
     );
   }
   return null;
+}
+
+// ============================== MEDIA LIBRARY ==============================
+
+const MEDIA_VARIANT_LABELS: Record<string, string> = {
+  cover: "Cover",
+  logo: "Logo",
+  photo: "Foto",
+  inline: "Sisipan",
+  avatar: "Avatar",
+};
+
+const MEDIA_VARIANTS = ["all", "cover", "logo", "photo", "inline", "avatar"] as const;
+
+function MediaModule({ notify }: { notify: (msg: string) => void }) {
+  const [variant, setVariant] = useState<(typeof MEDIA_VARIANTS)[number]>("all");
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; filename: string; usageCount: number } | null>(null);
+  const { mutate } = useSWRConfig();
+
+  const query: Record<string, string | number> = { page, pageSize: 30 };
+  if (variant !== "all") query.variant = variant;
+
+  const { data, isLoading } = useSWR<{ data: AdminMediaItem[]; total: number; page: number; pageSize: number }>(
+    ["admin-media", query] as const,
+    async ([, q]) => apiFetch("media", { query: q as Record<string, string | number>, withCredentials: true }),
+    { revalidateOnFocus: false, dedupingInterval: 15_000 },
+  );
+
+  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+  const filtered = (data?.data ?? []).filter((m) =>
+    !search
+      ? true
+      : `${m.filename} ${m.originalName ?? ""}`.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const totalSize = (data?.data ?? []).reduce((sum, m) => sum + m.size, 0);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await apiFetch(`media/${id}`, { method: "DELETE", withCredentials: true });
+      notify("Media dihapus.");
+      setConfirmDelete(null);
+      const matchesKey = (namespace: string) => (key: unknown) =>
+        (typeof key === "string" && key === namespace) ||
+        (Array.isArray(key) && key[0] === namespace);
+      mutate(matchesKey("admin-dashboard"), undefined, { revalidate: true });
+      mutate(["admin-media", query] as const);
+    } catch (err) {
+      notify(err instanceof Error ? `Gagal: ${err.message}` : "Gagal menghapus media.");
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Stats row */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Metric label="Total aset" value={`${data?.total ?? 0}`} note="aset aktif (tidak soft-deleted)" icon={ImageIcon} accent="border-white/10 text-white/55" />
+        <Metric label="Ukuran halaman ini" value={formatBytes(totalSize)} note="halaman saat ini, semua varian" icon={FileText} accent="border-white/10 text-white/55" />
+        <Metric label="Tidak terpakai" value={`${filtered.filter((m) => m.usageCount === 0).length}`} note="siap dihapus dari halaman ini" icon={Trash2} accent="border-bara-orange/30 text-bara-orange" />
+      </div>
+
+      {/* Toolbar */}
+      <section className="admin-panel overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 p-4">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama file..."
+              className="admin-search w-full pl-9"
+            />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {MEDIA_VARIANTS.map((v) => (
+              <button
+                key={v}
+                onClick={() => {
+                  setVariant(v);
+                  setPage(1);
+                }}
+                className={`admin-chip ${variant === v ? "admin-chip-active" : ""}`}
+              >
+                {v === "all" ? "Semua" : MEDIA_VARIANT_LABELS[v]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="aspect-square animate-pulse rounded-xl bg-white/[0.04]" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="px-6 py-16 text-center text-xs text-white/40">
+            Tidak ada media yang cocok.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {filtered.map((m) => (
+              <MediaCard
+                key={m.id}
+                item={m}
+                onDelete={() => setConfirmDelete({ id: m.id, filename: m.originalName ?? m.filename, usageCount: m.usageCount })}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="admin-table-footer flex items-center justify-between">
+          <span>
+            {data ? `${filtered.length} dari ${data.total} aset` : "Memuat..."}
+          </span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="admin-icon-button"
+                aria-label="Halaman sebelumnya"
+              >
+                <ChevronDown className="h-3.5 w-3.5 rotate-90" />
+              </button>
+              <span className="text-[10px] text-white/55">
+                {page} / {totalPages}
+              </span>
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="admin-icon-button"
+                aria-label="Halaman berikutnya"
+              >
+                <ChevronDown className="h-3.5 w-3.5 -rotate-90" />
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Confirm delete modal */}
+      {confirmDelete && (
+        <ConfirmDeleteModal
+          filename={confirmDelete.filename}
+          usageCount={confirmDelete.usageCount}
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={() => handleDelete(confirmDelete.id)}
+        />
+      )}
+    </div>
+  );
+}
+
+type AdminMediaItem = {
+  id: string;
+  filename: string;
+  originalName: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  variant: string;
+  usageCount: number;
+  alt: string | null;
+  createdAt: string;
+};
+
+function MediaCard({ item, onDelete }: { item: AdminMediaItem; onDelete: () => void }) {
+  const isUnused = item.usageCount === 0;
+  return (
+    <div className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+      <div className="relative aspect-square overflow-hidden bg-[#1a1311]">
+        <Image
+          src={item.url}
+          alt={item.alt ?? item.originalName ?? item.filename}
+          fill
+          sizes="(max-width: 768px) 50vw, 16vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          unoptimized
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+          <p className="line-clamp-2 text-[10px] text-white/80">{item.originalName ?? item.filename}</p>
+        </div>
+        <span className="absolute left-1.5 top-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+          {MEDIA_VARIANT_LABELS[item.variant] ?? item.variant}
+        </span>
+        {!isUnused && (
+          <span className="absolute right-1.5 top-1.5 rounded-md bg-bara-orange/90 px-1.5 py-0.5 text-[9px] font-bold text-white">
+            Dipakai {item.usageCount}x
+          </span>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-1 p-2">
+        <p className="truncate text-[10px] text-white/40">
+          {formatBytes(item.size)} · {item.width ?? "?"}×{item.height ?? "?"}
+        </p>
+        {isUnused ? (
+          <button
+            onClick={onDelete}
+            className="admin-icon-button !h-7 !w-7 hover:!border-red-400/30 hover:!text-red-300"
+            aria-label="Hapus media"
+            title="Hapus"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        ) : (
+          <button
+            disabled
+            className="admin-icon-button !h-7 !w-7 cursor-not-allowed opacity-30"
+            aria-label="Sedang dipakai"
+            title={`Dipakai di ${item.usageCount} tempat — hapus referensi dulu`}
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmDeleteModal({
+  filename,
+  usageCount,
+  onCancel,
+  onConfirm,
+}: {
+  filename: string;
+  usageCount: number;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[220] grid place-items-center bg-black/70 p-6 backdrop-blur-sm"
+      onClick={onCancel}
+    >
+      <div
+        className="admin-panel w-full max-w-md p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-display text-lg">Hapus media?</h3>
+        {usageCount > 0 ? (
+          <p className="mt-3 text-sm text-red-300">
+            File ini dipakai di {usageCount} tempat. Hapus referensi di artikel/unit/avatar dulu, baru bisa dihapus dari sini.
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-white/65">
+            <span className="font-medium text-white/85">{filename}</span> akan dih permanen dari storage. Tindakan ini tidak bisa dibatalkan.
+          </p>
+        )}
+        <div className="mt-6 flex justify-end gap-2">
+          <button onClick={onCancel} className="admin-secondary-button">
+            Batal
+          </button>
+          {usageCount === 0 && (
+            <button onClick={onConfirm} className="admin-primary-button !bg-red-500 hover:!bg-red-600">
+              <Trash2 className="h-3.5 w-3.5" /> Hapus permanen
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
