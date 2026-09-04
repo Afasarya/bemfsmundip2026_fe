@@ -19,7 +19,7 @@ export default function BidangPage() {
         >
           <p className="section-kicker">Struktur Kabinet</p>
           <h1 className="max-w-4xl font-display text-5xl leading-[0.95] md:text-7xl">
-            Satu struktur, <span className="italic gradient-text">banyak gerak.</span>
+            Meet the People Behind the <span className="italic gradient-text">Bara Momentum</span>
           </h1>
           <p className="mt-7 max-w-2xl text-base leading-8 text-white/60 md:text-lg">
             Kenali tim, biro, dan bidang yang menjaga Bara Momentum tetap menyala.

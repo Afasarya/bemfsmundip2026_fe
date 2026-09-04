@@ -182,8 +182,8 @@ export default function InstagramSection() {
           ...Array.from({ length: 4 - realPosts.length }, (_, i) => placeholderPost(realPosts.length + i)),
         ];
 
-  const handle = "bemfsmundip";
-  const profileUrl = `https://instagram.com/${handle}`;
+  const handle = "bemfsm_undip";
+  const profileUrl = `https://www.instagram.com/${handle}/`;
   const showSkeleton = isLoading && realPosts.length === 0;
 
   return (

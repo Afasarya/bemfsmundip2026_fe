@@ -184,8 +184,8 @@ export default function NewsInstagram() {
           ),
         ];
 
-  const handle = "bemfsmundip";
-  const profileUrl = `https://instagram.com/${handle}`;
+  const handle = "bemfsm_undip";
+  const profileUrl = `https://www.instagram.com/${handle}/`;
   const showSkeleton = isLoading && realPosts.length === 0;
 
   return (

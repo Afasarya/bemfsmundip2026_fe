@@ -74,9 +74,9 @@ export const DATABASE_CARDS = [
 ];
 
 export const STATS = [
-  { value: "9", label: "Bidang & Biro" },
-  { value: "120+", label: "Pengurus Inti" },
-  { value: "5", label: "Program Studi" },
+  { value: "12", label: "Bidang, Biro & Tim" },
+  { value: "150+", label: "Pengurus Inti" },
+  { value: "7 / 6", label: "Prodi / Departemen" },
   { value: "30+", label: "Program Kerja" },
 ];
 
