@@ -77,7 +77,7 @@ export const DATABASE_CARDS: DatabaseCard[] = [
 /* ---------------- Video Company Profile ---------------- */
 export const COMPANY_PROFILE = {
   // Ganti dengan ID video YouTube resmi
-  youtubeId: "dQw4w9WgXcQ",
+  youtubeId: "DJUTBv19BK4",
   title: "Company Profile BEM FSM UNDIP 2026",
   subtitle: "Mengenal lebih dekat Kabinet Bara Momentum",
 };

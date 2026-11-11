@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import {
   MessageSquareHeart,
@@ -21,9 +22,13 @@ import {
 import MagneticButton from "@/components/ui/MagneticButton";
 import SplitText from "@/components/ui/SplitText";
 import InstagramSection from "@/components/home/InstagramSection";
-import ArchivedMemoriesGallery from "@/components/gallery/ArchivedMemoriesGallery";
 import { useIntroComplete } from "@/components/layout/Loader";
 import { DATABASE_CARDS, STATS, MARQUEE_ITEMS } from "@/lib/data";
+
+const ArchivedMemoriesGallery = dynamic(
+  () => import("@/components/gallery/ArchivedMemoriesGallery"),
+  { ssr: false }
+);
 
 const iconMap: Record<string, any> = {
   MessageSquareHeart,
@@ -44,6 +49,11 @@ export default function Home() {
   const introComplete = useIntroComplete();
   const reduceMotion = useReducedMotion();
   const [canUseSpline, setCanUseSpline] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const PROFILE_VIDEO_ID = "DJUTBv19BK4";
+  const [videoThumbSrc, setVideoThumbSrc] = useState(
+    `https://i.ytimg.com/vi/${PROFILE_VIDEO_ID}/maxresdefault.jpg`
+  );
 
   useEffect(() => {
     setCanUseSpline(!reduceMotion);
@@ -261,50 +271,50 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
+            viewport={{ once: true, amount: 0.15 }}
             transition={{ duration: 0.8 }}
-            className="relative aspect-video rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent group cursor-pointer"
+            className="relative aspect-video rounded-3xl overflow-hidden border border-white/10 bg-black group cursor-pointer"
+            onClick={() => !videoPlaying && setVideoPlaying(true)}
           >
-            {/* Layered background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-bara-maroon/40 via-bara-bg-dark to-bara-bg-dark" />
-            <div className="absolute inset-0 noise-overlay opacity-[0.15]" />
-            <div
-              aria-hidden
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-bara-orange/25 blur-[110px]"
-            />
+            {videoPlaying ? (
+              <iframe
+                className="absolute inset-0 z-20 w-full h-full border-0"
+                src={`https://www.youtube.com/embed/${PROFILE_VIDEO_ID}?autoplay=1&rel=0`}
+                title="Company Profile BEM FSM UNDIP 2026"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            ) : (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={videoThumbSrc}
+                  onError={() => {
+                    if (videoThumbSrc.includes("maxresdefault")) {
+                      setVideoThumbSrc(
+                        `https://i.ytimg.com/vi/${PROFILE_VIDEO_ID}/hqdefault.jpg`
+                      );
+                    }
+                  }}
+                  alt="Thumbnail Company Profile BEM FSM UNDIP 2026"
+                  loading="eager"
+                  decoding="async"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                />
 
-            {/* Large faded "BARA" text */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="font-display text-[12rem] md:text-[18rem] text-white/[0.04] italic leading-none select-none">
-                BARA
-              </span>
-            </div>
-
-            {/* Play button */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                className="relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/[0.06] backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:bg-bara-orange group-hover:border-bara-orange transition-all duration-500"
-              >
-                <div className="absolute inset-0 rounded-full bg-bara-orange/40 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <Play className="w-7 h-7 md:w-8 md:h-8 text-white fill-white ml-1 relative z-10" />
-              </motion.div>
-            </div>
-
-            {/* Caption */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 bg-gradient-to-t from-bara-bg-dark via-bara-bg-dark/60 to-transparent">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-widest text-white/40 mb-1">
-                    Profile Kabinet • 2026
-                  </p>
-                  <h3 className="font-display text-xl md:text-2xl">
-                    Bara Momentum, Official Profile
-                  </h3>
+                {/* Play button */}
+                <div className="absolute inset-0 z-10 flex items-center justify-center">
+                  <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    className="relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-black/45 backdrop-blur-md border border-white/25 flex items-center justify-center group-hover:bg-bara-orange group-hover:border-bara-orange transition-all duration-500 shadow-lg"
+                  >
+                    <div className="absolute inset-0 rounded-full bg-bara-orange/40 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <Play className="w-7 h-7 md:w-8 md:h-8 text-white fill-white ml-1 relative z-10" />
+                  </motion.div>
                 </div>
-                <span className="text-xs text-white/40 font-mono whitespace-nowrap">02:46</span>
-              </div>
-            </div>
+              </>
+            )}
           </motion.div>
         </div>
       </section>
